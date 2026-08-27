@@ -12,7 +12,7 @@
 
 ## 用法
 ```python
-import sys; sys.path.insert(0, r"G:\tools\game\procgen")
+import sys; sys.path.insert(0, r"G:\repos\procgen")
 import procgen as pg
 
 hm = pg.generate_heightmap(64, 64, seed=1)
@@ -29,7 +29,7 @@ sx = pg.simplex_noise(xs, ys, seed=1)                  # 2D simplex
 
 ## 命令行演示
 ```bat
-cd G:\tools\game\procgen
+cd G:\repos\procgen
 python cli.py terrain --size 64 --seed 1 --out terrain.png
 python cli.py dungeon --w 48 --h 32 --rooms 8
 python cli.py name --style fantasy --n 10
