@@ -1,5 +1,8 @@
 # procgen 程序化生成库
 
+> 仓库：<https://gitee.com/siwpan/procgen> ｜ 许可：MIT（见 [LICENSE](LICENSE)）
+> 注：文中 <PATH> 为路径占位符，请替换为你本机实际的目录 / 可执行文件路径。
+
 供各游戏项目 `import` 复用的程序化生成工具包（纯 Python + numpy）。
 
 ## 模块
@@ -12,7 +15,7 @@
 
 ## 用法
 ```python
-import sys; sys.path.insert(0, r"G:\repos\procgen")
+import sys; sys.path.insert(0, r"<PATH>")
 import procgen as pg
 
 hm = pg.generate_heightmap(64, 64, seed=1)
@@ -29,7 +32,7 @@ sx = pg.simplex_noise(xs, ys, seed=1)                  # 2D simplex
 
 ## 命令行演示
 ```bat
-cd G:\repos\procgen
+cd <PATH>
 python cli.py terrain --size 64 --seed 1 --out terrain.png
 python cli.py dungeon --w 48 --h 32 --rooms 8
 python cli.py name --style fantasy --n 10
