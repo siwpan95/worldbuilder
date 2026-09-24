@@ -8,7 +8,7 @@
     python run.py            # 使用内置演示参数
     python run.py --seed 7   # 换种子生成另一套
 
-依赖：procgen（位于本示例的上一级目录，即 G:\\tools\\game\\procgen）、numpy、Pillow
+依赖：procgen（位于本示例的上一级目录，即仓库根下的 procgen 包）、numpy、Pillow
 """
 from __future__ import annotations
 
