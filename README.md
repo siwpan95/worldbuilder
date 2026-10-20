@@ -9,7 +9,7 @@
 
 | 项目 | PyPI 发行名 | 导入名 | Gitee 仓库 |
 | --- | --- | --- | --- |
-| 本库 | `worldbuilder` | `worldbuilder` | [siwpan/procgen](https://gitee.com/siwpan/procgen) |
+| 本库 | `worldbuilder` | `worldbuilder` | [siwpan/worldbuilder](https://gitee.com/siwpan/worldbuilder) |
 
 ```bat
 pip install worldbuilder
