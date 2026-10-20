@@ -15,7 +15,18 @@
   原因：PyPI 上 `procgen` 已被 OpenAI 的 Procgen Benchmark 占用，与本库无关。
 - Gitee 仓库路径保持不变（`siwpan/procgen`），**包名一律以 PyPI 为准**。
 
-### Added
+- **地牢图 `worldbuilder/dungeongraph.py`（P1-1 后半，2026-10-20）**：从网格抽关卡图。
+  - `build_dungeon_graph(grid, rooms=None, locks=1, loops=2, seed=0)`：BSP 给矩形就直接用，
+    否则用「3×3 全地板」核心认房间；薄墙地牢（WFC 十字房间）没有任何 3×3 空块，
+    自动退化成「交叉口」核心。
+  - 边 = 多源 BFS 穿走廊的第一次接触，路径保留为折线，**不穿过第三方房间**。
+  - 语义：入口 = 离边界最近的房间；Boss = 图上离入口最远；宝箱优先放被锁子树里最深的房间；
+    守卫 = 入口→Boss 路径上的中间房间。
+  - 锁钥：只在**生成树深层边**上锁，钥匙放在「不经过任何锁即可从入口到达」的房间——
+    这条是可解性的定义，`test_keys_reachable_without_any_lock` 直接钉住。
+  - 输出 `nodes/edges` 与 worldspec 的 `graph.json` 同形，下游 `MapGraph` 可直接消费。
+  - 修 bug 两处：走廊格曾被当成墙（导致一条边都连不上）；WFC 房间没有 3×3 核心。
+  - 测试 +13（`tests/test_dungeongraph.py`），套件 112 → 125。
 
 - 首次发布到 PyPI：`pip install worldbuilder`（sdist + wheel）。
 - 打包元数据补全：作者、MIT 许可、keywords、classifiers、依赖声明。
@@ -29,7 +40,18 @@
   旧路径由 Gitee 自动重定向，历史链接不失效；README 首行、包名沿革段与
   `pyproject.toml` 的 Homepage / Repository / Changelog 三个 URL 已同步。
 
-### Added
+- **地牢图 `worldbuilder/dungeongraph.py`（P1-1 后半，2026-10-20）**：从网格抽关卡图。
+  - `build_dungeon_graph(grid, rooms=None, locks=1, loops=2, seed=0)`：BSP 给矩形就直接用，
+    否则用「3×3 全地板」核心认房间；薄墙地牢（WFC 十字房间）没有任何 3×3 空块，
+    自动退化成「交叉口」核心。
+  - 边 = 多源 BFS 穿走廊的第一次接触，路径保留为折线，**不穿过第三方房间**。
+  - 语义：入口 = 离边界最近的房间；Boss = 图上离入口最远；宝箱优先放被锁子树里最深的房间；
+    守卫 = 入口→Boss 路径上的中间房间。
+  - 锁钥：只在**生成树深层边**上锁，钥匙放在「不经过任何锁即可从入口到达」的房间——
+    这条是可解性的定义，`test_keys_reachable_without_any_lock` 直接钉住。
+  - 输出 `nodes/edges` 与 worldspec 的 `graph.json` 同形，下游 `MapGraph` 可直接消费。
+  - 修 bug 两处：走廊格曾被当成墙（导致一条边都连不上）；WFC 房间没有 3×3 核心。
+  - 测试 +13（`tests/test_dungeongraph.py`），套件 112 → 125。
 
 - **聚落 / 路网 / WFC 地牢（P0-4，2026-10-20）**：把"有地理的世界"补成"有人的世界"。
   - `poi.py`：`place_pois()` 按水源、坡度、海拔带、群系与间距给每格打分，贪心选出

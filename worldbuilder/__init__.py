@@ -38,6 +38,14 @@ from .roadnet import (build_road_network, least_cost_path, road_cost_field,
                       describe_network)
 from .wfc import (Tile, TileSet, wang_tileset, generate_wfc, rasterize,
                   generate_dungeon_wfc, WfcContradiction)
+from .dungeongraph import (Room, build_dungeon_graph, detect_rooms,
+                           rooms_from_rects, to_ascii as dungeon_to_ascii,
+                           EDGE_OPEN, EDGE_LOCKED, EDGE_LOOP,
+                           KIND_ENTRANCE, KIND_BOSS, KIND_TREASURE, KIND_GUARD)
+from .dungeongraph import (Room, build_dungeon_graph, detect_rooms,
+                           rooms_from_rects, to_ascii as dungeon_to_ascii,
+                           EDGE_OPEN, EDGE_LOCKED, EDGE_LOOP,
+                           KIND_ENTRANCE, KIND_BOSS, KIND_TREASURE, KIND_GUARD)
 
 __all__ = [
     "value_noise", "perlin_noise", "fractal_noise", "fbm", "simplex_noise",
@@ -70,4 +78,8 @@ __all__ = [
     "build_road_network", "least_cost_path", "road_cost_field", "describe_network",
     "Tile", "TileSet", "wang_tileset", "generate_wfc", "rasterize",
     "generate_dungeon_wfc", "WfcContradiction",
+    # 地牢图（房间/走廊/锁钥/语义）
+    "Room", "build_dungeon_graph", "detect_rooms", "rooms_from_rects",
+    "dungeon_to_ascii", "EDGE_OPEN", "EDGE_LOCKED", "EDGE_LOOP",
+    "KIND_ENTRANCE", "KIND_BOSS", "KIND_TREASURE", "KIND_GUARD",
 ]

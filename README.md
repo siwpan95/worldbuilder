@@ -52,6 +52,11 @@ Gitee 仓库路径同步更名为 `siwpan/worldbuilder`（旧路径 `siwpan/proc
 - `wfc`：**波函数坍缩**。`generate_wfc(w, h, Tileset)` 是通用引擎（熵最小 + 弧相容传播 + 回溯）；
   `wang_tileset()` 给 15 个王瓦片，`generate_dungeon_wfc(w, h)` 直接产出 `(3h, 3w)` 的 1/0 地牢网格
   （地板保证单连通）。
+- `dungeongraph`：**地牢的图表示**。`build_dungeon_graph(grid, rooms=..., locks=2, loops=2)` ——
+  房间=节点、走廊=边（多源 BFS 抽折线，不穿过第三方房间）；入口取贴边最近的房间，Boss 取图上最远，
+  锁只在生成树深层边上，**钥匙一定放在"不经过任何锁就能到达"的房间**（这是可解性的定义）。
+  输出 `nodes/edges` 与 worldspec 的 `graph.json` 同形，可直接给 `MapGraph` 消费；
+  `dungeon_to_ascii(graph, grid)` 叠图打印。
 - `worldgen`：**编排**。`generate_world_full(...)` 按「高度 → 海平面 → 填洼 → 流向 → 汇水 → 河/湖/海岸 → 温度 → 降水 → 群系」固定顺序产出全层数据；`describe(world)` 打一行摘要
 
 ## 用法
@@ -69,6 +74,17 @@ drops = wb.LootTable([("金币",50,(1,10)),("传说剑",1,(1,1))]).roll(5)
 uniq = wb.LootTable([("a",50,(1,2)),("b",30,(1,2))]).roll(3, unique=True)
 wld = wb.generate_world(80, 80, seed=11, falloff=0.3)  # 含生物群系
 sx = wb.simplex_noise(xs, ys, seed=1)                  # 2D simplex
+```
+
+
+地牢出图（房间/锁钥/语义）：
+
+```python
+d = wb.generate_dungeon_bsp(48, 32, seed=5)
+g = wb.build_dungeon_graph(d["grid"], rooms=d["rooms"], locks=2, loops=2, seed=3)
+# {'nodes': [...], 'edges': [...], 'keys': [{'id','room','unlocks'}],
+#  'entrance': 'room-08', 'boss': 'room-01', 'stats': {...}}
+print(wb.dungeon_to_ascii(g, d["grid"]))
 ```
 
 ### 完整世界（含聚落与路网）
