@@ -23,8 +23,22 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Gitee 仓库路径 `siwpan/procgen` → `siwpan/worldbuilder`**：与发行名/导入名统一。
+  旧路径由 Gitee 自动重定向，历史链接不失效；README 首行、包名沿革段与
+  `pyproject.toml` 的 Homepage / Repository / Changelog 三个 URL 已同步。
+
 ### Added
 
+- **噪声 v2：`warp_noise` / `ridged_noise` / `cellular_noise`**（`worldbuilder/noise.py`）：
+  - `warp_noise(...)`：低频场扭曲坐标后再采样基噪声；`warp_strength=0` 时**逐位等于**基噪声直采；
+  - `ridged_noise(...)`：`1-|2n-1|` 取脊 + `sharpness` 幂次 + 逐层归一；
+  - `cellular_noise(...)`：Worley f1 / f2 / f2-f1，3×3 邻域全程向量化，`jitter` 可调。
+  - 旧函数**一行未改**；新参数均有默认值，老调用输出逐位不变（黄金值测试，含 dtype/shape）。
+  - 借鉴 FastNoiseLite（MIT）的算法口径，实现自写；记录见 `docs/借鉴记账.md`。
+- **`tests/test_noise_v2.py`**：20 项（兼容性黄金值 / 三种子类型不变量 / 同 seed 复现 / 标量与广播）。
+- **`docs/借鉴记账.md`**：本仓借鉴台账（watabou 仅取算法思想、FastNoiseLite 算法口径、后续 Azgaar/WFC 预登记）。
 - **`worldbuilder/road.py`**（公路走廊）：`gobi_corridor()` 把公路"挖"进
   `noise.fractal_noise` 生成的分形地形——路基压平到 `corridor_level`、路侧用
   `smoothstep` 过渡、背景叠 ridged 远山；返回 `(hm, coords_x, coords_z)`。

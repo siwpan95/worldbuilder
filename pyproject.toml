@@ -29,9 +29,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://gitee.com/siwpan/procgen"
-Repository = "https://gitee.com/siwpan/procgen"
-Changelog = "https://gitee.com/siwpan/procgen/blob/master/CHANGELOG.md"
+Homepage = "https://gitee.com/siwpan/worldbuilder"
+Repository = "https://gitee.com/siwpan/worldbuilder"
+Changelog = "https://gitee.com/siwpan/worldbuilder/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 cli = ["Pillow>=10.0.0"]

@@ -1,6 +1,6 @@
 # worldbuilder 程序化生成库
 
-> 仓库：<https://gitee.com/siwpan/procgen> ｜ 许可：MIT（见 [LICENSE](LICENSE)）
+> 仓库：<https://gitee.com/siwpan/worldbuilder> ｜ 许可：MIT（见 [LICENSE](LICENSE)）
 > 注：文中 <PATH> 为路径占位符，请替换为你本机实际的目录 / 可执行文件路径。
 
 供各游戏项目 `import` 复用的程序化生成工具包（纯 Python + numpy）。
@@ -22,7 +22,8 @@ import worldbuilder as wb
 **包名沿革**：本库原名 `procgen`，2026-08-27 以该名发布首个 Gitee 发行版 `v1.0.0`。
 现因 PyPI 上 `procgen` 已被 OpenAI 的 *Procgen Benchmark* 占用，发行名与导入名统一更名为 `worldbuilder`，
 版本号沿用 `1.0.0`（对外身份变更，功能面未变）。
-Gitee 仓库路径仍为 `siwpan/procgen`（历史链接继续有效），**不再**与包名一致——请以 PyPI 名称为准。
+Gitee 仓库路径同步更名为 `siwpan/worldbuilder`（旧路径 `siwpan/procgen` 由 Gitee 自动重定向），
+路径与发行名现已一致——两者都请以 `worldbuilder` 为准。
 
 > 历史版本导入的是 `import procgen as pg`；升级后请改为 `import worldbuilder as wb`。
 
