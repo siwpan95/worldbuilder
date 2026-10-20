@@ -1,6 +1,6 @@
-"""run.py —— 基于 procgen 的“冒险者公会任务包”生成器（实操）。
+"""run.py —— 基于 worldbuilder 的“冒险者公会任务包”生成器（实操）。
 
-把 procgen 库里的：地形/生物群系、随机房间地牢、BSP 地牢、元胞自动机洞穴、
+把 worldbuilder 库里的：地形/生物群系、随机房间地牢、BSP 地牢、元胞自动机洞穴、
 噪声（value/perlin/fbm/simplex）、名字生成（音节/马尔可夫）、掉落表
 全部串起来，产出一份可直接查看的成果包，落到本目录的 output\\。
 
@@ -8,7 +8,7 @@
     python run.py            # 使用内置演示参数
     python run.py --seed 7   # 换种子生成另一套
 
-依赖：procgen（位于本示例的上一级目录，即仓库根下的 procgen 包）、numpy、Pillow
+依赖：worldbuilder（位于本示例的上一级目录，即仓库根下的 worldbuilder 包）、numpy、Pillow
 """
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ import warnings
 
 import numpy as np
 
-# ---- 让 procgen 根目录（本示例的上一级）可被 import ----
+# ---- 让 worldbuilder 根目录（本示例的上一级）可被 import ----
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROCGEN_ROOT = os.path.dirname(HERE)
 if PROCGEN_ROOT not in sys.path:
     sys.path.insert(0, PROCGEN_ROOT)
-import procgen as pg
-from procgen.dungeon import to_ascii
+import worldbuilder as wb
+from worldbuilder.dungeon import to_ascii
 
 from render import (grid_to_png, classes_to_png, gray_to_png,
                     grid_to_ascii_png, BIOME_PALETTE, TERRAIN_PALETTE, add_legend)
@@ -40,8 +40,8 @@ def make_world(seed: int) -> dict:
     # 大陆版：无衰减，便于完整展示 8 类生物群系
     # 对高度图做 min-max 归一化拉伸（程序化地形常见预处理），让全梯度呈现，
     # 否则 fBm 输出罕见 >=0.75，山/雪/苔几乎不出现。
-    hm = pg.generate_heightmap(64, 64, seed=seed, scale=0.07, octaves=5, falloff=0.0)
-    moist = pg.generate_moisture(64, 64, seed=seed)
+    hm = wb.generate_heightmap(64, 64, seed=seed, scale=0.07, octaves=5, falloff=0.0)
+    moist = wb.generate_moisture(64, 64, seed=seed)
     lo, hi = float(hm.min()), float(hm.max())
     hm_n = (hm - lo) / (hi - lo) if hi > lo else hm
     biomes = pg.classify_biomes(hm_n, moist)
@@ -53,7 +53,7 @@ def make_world(seed: int) -> dict:
     gray_to_png(moist).save(os.path.join(OUT, "world_moisture.png"))
 
     # 岛屿版：径向衰减，演示 falloff 形成海岛
-    himg = pg.generate_heightmap(64, 64, seed=seed, scale=0.07, octaves=5, falloff=0.35)
+    himg = wb.generate_heightmap(64, 64, seed=seed, scale=0.07, octaves=5, falloff=0.35)
     lo2, hi2 = float(himg.min()), float(himg.max())
     himg_n = (himg - lo2) / (hi2 - lo2) if hi2 > lo2 else himg
     island = pg.classify_biomes(himg_n, moist)
@@ -68,11 +68,11 @@ def make_world(seed: int) -> dict:
 # ---------------------------------------------------------------------------
 def make_dungeons(seed: int) -> dict:
     # 随机房间式
-    d1 = pg.generate_dungeon(48, 32, rooms=9, seed=seed)
+    d1 = wb.generate_dungeon(48, 32, rooms=9, seed=seed)
     grid_to_png(d1["grid"]).save(os.path.join(OUT, "dungeon_rooms.png"))
     grid_to_ascii_png(d1["grid"]).save(os.path.join(OUT, "dungeon_rooms_ascii.png"))
     # BSP 式
-    d2 = pg.generate_dungeon_bsp(48, 32, seed=seed)
+    d2 = wb.generate_dungeon_bsp(48, 32, seed=seed)
     grid_to_png(d2["grid"]).save(os.path.join(OUT, "dungeon_bsp.png"))
     grid_to_ascii_png(d2["grid"]).save(os.path.join(OUT, "dungeon_bsp_ascii.png"))
     return {
@@ -87,7 +87,7 @@ def make_dungeons(seed: int) -> dict:
 # 3. 洞穴（元胞自动机）
 # ---------------------------------------------------------------------------
 def make_cave(seed: int) -> dict:
-    c = pg.generate_cave(56, 40, seed=seed, fill_prob=0.45, iterations=5)
+    c = wb.generate_cave(56, 40, seed=seed, fill_prob=0.45, iterations=5)
     grid_to_png(c["grid"]).save(os.path.join(OUT, "cave.png"))
     grid_to_ascii_png(c["grid"]).save(os.path.join(OUT, "cave_ascii.png"))
     return {"regions": c["regions"], "floor_count": c["floor_count"]}
@@ -104,7 +104,7 @@ def make_noise(seed: int) -> dict:
     vn = pg.value_noise(fx, fy, seed=seed)
     pn = pg.perlin_noise(fx, fy, seed=seed)
     fn = pg.fbm(fx, fy, octaves=5, seed=seed)
-    sn = pg.simplex_noise(fx, fy, seed=seed)
+    sn = wb.simplex_noise(fx, fy, seed=seed)
     gray_to_png(vn).save(os.path.join(OUT, "noise_value.png"))
     gray_to_png(pn).save(os.path.join(OUT, "noise_perlin.png"))
     gray_to_png(fn).save(os.path.join(OUT, "noise_fbm.png"))
@@ -118,8 +118,8 @@ def make_noise(seed: int) -> dict:
 def make_names(seed: int) -> dict:
     out = {}
     for style in ("fantasy", "sci", "eastern"):
-        syl = pg.NameGenerator(style=style, seed=seed, method="syllable").generate(8)
-        mk = pg.NameGenerator(style=style, seed=seed, method="markov").generate(8)
+        syl = wb.NameGenerator(style=style, seed=seed, method="syllable").generate(8)
+        mk = wb.NameGenerator(style=style, seed=seed, method="markov").generate(8)
         out[style] = {"syllable": syl, "markov": mk}
     return out
 
@@ -128,7 +128,7 @@ def make_names(seed: int) -> dict:
 # 6. 掉落表
 # ---------------------------------------------------------------------------
 def make_loot(seed: int) -> dict:
-    table = pg.LootTable([
+    table = wb.LootTable([
         ("金币", 50, (1, 10)),
         ("药水", 10, (1, 3)),
         ("宝石", 5, (1, 2)),
@@ -146,7 +146,7 @@ def make_loot(seed: int) -> dict:
 # ---------------------------------------------------------------------------
 def make_town(seed: int) -> dict:
     from render import town_to_png
-    town = pg.generate_town(seed, n_wards=15, walled=True)
+    town = wb.generate_town(seed, n_wards=15, walled=True)
     town_to_png(town, scale_to=900).save(os.path.join(OUT, "town.png"))
     dist = {}
     for w in town["wards"]:
@@ -166,7 +166,7 @@ def make_town(seed: int) -> dict:
 # ---------------------------------------------------------------------------
 def write_report(seed, world, dungeons, cave, names, loot, town):
     lines = []
-    lines.append("# 冒险者公会任务包（procgen 实操成果）")
+    lines.append("# 冒险者公会任务包（worldbuilder 实操成果）")
     lines.append("")
     lines.append(f"- 种子 seed = {seed}")
     lines.append(f"- 生成时间由运行环境决定；输出目录：{OUT}")
@@ -238,7 +238,7 @@ def write_report(seed, world, dungeons, cave, names, loot, town):
     lines.append("- `classify_biomes` 中 TUNDRA（苔原）分支存在逻辑冲突：它要求 "
                  "`temperature<0.25`（即 `hm>0.75`），但同一条语句又被限定在 "
                  "`low = hm<0.75` 的集合内，导致苔原在默认参数下永远无法出现"
-                 "（本包中苔原格数恒为 0）。这是 procgen 库的一个待修复点。")
+                 "（本包中苔原格数恒为 0）。这是 worldbuilder 库的一个待修复点。")
     lines.append("- 生物群系图对高度图做了 min-max 归一化拉伸，否则 fBm 输出罕见 >=0.75，"
                  "山/雪几乎不出现；这是程序化地形常见的对比度预处理。")
     lines.append("")
@@ -249,7 +249,7 @@ def write_report(seed, world, dungeons, cave, names, loot, town):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="procgen 实操：冒险者公会任务包生成器")
+    ap = argparse.ArgumentParser(description="worldbuilder 实操：冒险者公会任务包生成器")
     ap.add_argument("--seed", type=int, default=20260717)
     args = ap.parse_args()
     seed = args.seed

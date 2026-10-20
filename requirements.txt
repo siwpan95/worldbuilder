@@ -1,3 +1,3 @@
-# procgen dependencies (auto-generated 2026-08-20)
+# worldbuilder dependencies (auto-generated 2026-08-20)
 numpy
 Pillow

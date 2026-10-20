@@ -1,7 +1,7 @@
-# 冒险者公会任务包（procgen 实操成果）
+# 冒险者公会任务包（worldbuilder 实操成果）
 
 - 种子 seed = 7
-- 生成时间由运行环境决定；输出目录：G:\tools\game\procgen\example\output
+- 生成时间由运行环境决定；输出目录：<PATH>\example\output
 
 ## 1. 世界与生物群系 (generate_world)
 
@@ -76,5 +76,5 @@
 
 ## 附：实操观察
 
-- `classify_biomes` 中 TUNDRA（苔原）分支存在逻辑冲突：它要求 `temperature<0.25`（即 `hm>0.75`），但同一条语句又被限定在 `low = hm<0.75` 的集合内，导致苔原在默认参数下永远无法出现（本包中苔原格数恒为 0）。这是 procgen 库的一个待修复点。
+- `classify_biomes` 中 TUNDRA（苔原）分支存在逻辑冲突：它要求 `temperature<0.25`（即 `hm>0.75`），但同一条语句又被限定在 `low = hm<0.75` 的集合内，导致苔原在默认参数下永远无法出现（本包中苔原格数恒为 0）。这是 worldbuilder 库的一个待修复点。
 - 生物群系图对高度图做了 min-max 归一化拉伸，否则 fBm 输出罕见 >=0.75，山/雪几乎不出现；这是程序化地形常见的对比度预处理。

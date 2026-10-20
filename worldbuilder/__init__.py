@@ -1,12 +1,12 @@
-"""procgen —— 程序化生成库。
+"""worldbuilder —— 程序化生成库。
 
 供各游戏项目 import 复用：
 
-    import procgen as pg
-    hm = pg.generate_heightmap(64, 64, seed=1)
-    d  = pg.generate_dungeon(48, 32, rooms=8, seed=2)
-    names = pg.NameGenerator(style='fantasy').generate(10)
-    drops = pg.LootTable([("金币",50,(1,10)),("传说剑",1,(1,1))]).roll(5)
+    import worldbuilder as wb
+    hm = wb.generate_heightmap(64, 64, seed=1)
+    d  = wb.generate_dungeon(48, 32, rooms=8, seed=2)
+    names = wb.NameGenerator(style='fantasy').generate(10)
+    drops = wb.LootTable([("金币",50,(1,10)),("传说剑",1,(1,1))]).roll(5)
 """
 from __future__ import annotations
 

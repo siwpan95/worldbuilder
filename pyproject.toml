@@ -3,17 +3,38 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "procgen"
-version = "0.1.0"
-description = "程序化生成工具包：噪声/地牢/名字/掉落/地形（纯 Python + numpy）"
+name = "worldbuilder"
+version = "1.0.0"
+description = "程序化生成工具包：噪声/地牢/洞穴/地形生物群系/城镇/命名/掉落（纯 Python + numpy）"
 readme = "README.md"
 requires-python = ">=3.9"
+authors = [{name = "siwpan"}]
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["procedural-generation", "noise", "dungeon", "terrain", "roguelike", "gamedev"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "numpy>=1.24.0",
 ]
+
+[project.urls]
+Homepage = "https://gitee.com/siwpan/procgen"
+Repository = "https://gitee.com/siwpan/procgen"
+Changelog = "https://gitee.com/siwpan/procgen/blob/master/CHANGELOG.md"
 
 [project.optional-dependencies]
 cli = ["Pillow>=10.0.0"]
 
 [tool.setuptools]
-packages = ["procgen"]
+packages = ["worldbuilder"]

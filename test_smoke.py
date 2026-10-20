@@ -1,13 +1,13 @@
-"""procgen 冒烟测试：import procgen 并断言各生成函数返回形状/类型正确。
+"""worldbuilder 冒烟测试：import worldbuilder 并断言各生成函数返回形状/类型正确。
 
 运行：
-    cd G:/tools/procgen
+    cd <PATH>
     python test_smoke.py
 """
 
 import numpy as np
-import procgen
-from procgen import (
+import worldbuilder
+from worldbuilder import (
     value_noise, perlin_noise, fractal_noise,
     generate_dungeon, NameGenerator, LootTable,
     generate_heightmap, classify,

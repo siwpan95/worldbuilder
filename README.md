@@ -1,9 +1,30 @@
-# procgen 程序化生成库
+# worldbuilder 程序化生成库
 
 > 仓库：<https://gitee.com/siwpan/procgen> ｜ 许可：MIT（见 [LICENSE](LICENSE)）
 > 注：文中 <PATH> 为路径占位符，请替换为你本机实际的目录 / 可执行文件路径。
 
 供各游戏项目 `import` 复用的程序化生成工具包（纯 Python + numpy）。
+
+## 📦 包名与安装
+
+| 项目 | PyPI 发行名 | 导入名 | Gitee 仓库 |
+| --- | --- | --- | --- |
+| 本库 | `worldbuilder` | `worldbuilder` | [siwpan/procgen](https://gitee.com/siwpan/procgen) |
+
+```bat
+pip install worldbuilder
+```
+
+```python
+import worldbuilder as wb
+```
+
+**包名沿革**：本库原名 `procgen`，2026-08-27 以该名发布首个 Gitee 发行版 `v1.0.0`。
+现因 PyPI 上 `procgen` 已被 OpenAI 的 *Procgen Benchmark* 占用，发行名与导入名统一更名为 `worldbuilder`，
+版本号沿用 `1.0.0`（对外身份变更，功能面未变）。
+Gitee 仓库路径仍为 `siwpan/procgen`（历史链接继续有效），**不再**与包名一致——请以 PyPI 名称为准。
+
+> 历史版本导入的是 `import procgen as pg`；升级后请改为 `import worldbuilder as wb`。
 
 ## 模块
 - `noise`：`value_noise` / `perlin_noise` / `fractal_noise` / `fbm`（可调 lacunarity/gain）/ `simplex_noise`（方向伪影更少的改进版）
@@ -16,18 +37,18 @@
 ## 用法
 ```python
 import sys; sys.path.insert(0, r"<PATH>")
-import procgen as pg
+import worldbuilder as wb
 
-hm = pg.generate_heightmap(64, 64, seed=1)
-d  = pg.generate_dungeon(48, 32, rooms=8, seed=2)
-bsp = pg.generate_dungeon_bsp(60, 40, seed=5)          # BSP 地牢
-cave = pg.generate_cave(56, 40, seed=7)                # 洞穴
-names = pg.NameGenerator(style='fantasy').generate(10)
-mkv = pg.NameGenerator(style='sci', method='markov').generate(10)
-drops = pg.LootTable([("金币",50,(1,10)),("传说剑",1,(1,1))]).roll(5)
-uniq = pg.LootTable([("a",50,(1,2)),("b",30,(1,2))]).roll(3, unique=True)
-wld = pg.generate_world(80, 80, seed=11, falloff=0.3)  # 含生物群系
-sx = pg.simplex_noise(xs, ys, seed=1)                  # 2D simplex
+hm = wb.generate_heightmap(64, 64, seed=1)
+d  = wb.generate_dungeon(48, 32, rooms=8, seed=2)
+bsp = wb.generate_dungeon_bsp(60, 40, seed=5)          # BSP 地牢
+cave = wb.generate_cave(56, 40, seed=7)                # 洞穴
+names = wb.NameGenerator(style='fantasy').generate(10)
+mkv = wb.NameGenerator(style='sci', method='markov').generate(10)
+drops = wb.LootTable([("金币",50,(1,10)),("传说剑",1,(1,1))]).roll(5)
+uniq = wb.LootTable([("a",50,(1,2)),("b",30,(1,2))]).roll(3, unique=True)
+wld = wb.generate_world(80, 80, seed=11, falloff=0.3)  # 含生物群系
+sx = wb.simplex_noise(xs, ys, seed=1)                  # 2D simplex
 ```
 
 ## 命令行演示
@@ -44,7 +65,7 @@ python cli.py loot --n 5
 example/ 目录是一个完整的实操示例（冒险者公会任务包生成器），串起噪声/地形/地牢/洞穴/命名/掉落并渲染 PNG 成果包：
 
 ```bat
-cd G:	oolsgameprocgenexample
+cd <PATH>\example
 python run.py --seed 7
 ```
 

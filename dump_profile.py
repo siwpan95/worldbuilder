@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-procgen 装配自省（--dump-profile 等价物，agent 审计入口，2026-08-24）
+worldbuilder 装配自省（--dump-profile 等价物，agent 审计入口，2026-08-24）
 """
 import json
 import os
@@ -14,7 +14,7 @@ except Exception:
 
 def dump_profile() -> dict:
     return {
-        "tool": "procgen",
+        "tool": "worldbuilder",
         "description": "程序化生成库（地形/地牢/名字/战利品/噪声）",
         "entry": "cli.py（包）",
         "structure": "main.py + core.py（统一结构）",
@@ -28,6 +28,6 @@ if __name__ == "__main__":
     if "--json" in sys.argv:
         print(json.dumps(profile, ensure_ascii=False, indent=2))
     else:
-        print("procgen 装配自省")
+        print("worldbuilder 装配自省")
         for k, v in profile.items():
             print(f"  {k}: {v}")

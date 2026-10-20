@@ -1,7 +1,7 @@
-"""render.py —— 把 procgen 生成的数值数据渲染成可视 PNG。
+"""render.py —— 把 worldbuilder 生成的数值数据渲染成可视 PNG。
 
-本模块不直接调用 procgen，只负责“数值 -> 图片/文本”的呈现，
-便于 run.py 复用。所有渲染均为纯 numpy + Pillow，不依赖 procgen。
+本模块不直接调用 worldbuilder，只负责“数值 -> 图片/文本”的呈现，
+便于 run.py 复用。所有渲染均为纯 numpy + Pillow，不依赖 worldbuilder。
 
 约定：
   - 地图类网格（dungeon / cave）：0=墙 1=地

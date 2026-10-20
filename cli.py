@@ -1,4 +1,4 @@
-"""procgen 演示入口（命令行）。
+"""worldbuilder 演示入口（命令行）。
 
 用法：
     python cli.py terrain  --size 64 --seed 1 --out terrain.png
@@ -15,11 +15,11 @@ import sys
 
 import numpy as np
 
-# 允许从包内直接运行：确保 procgen 包可导入
+# 允许从包内直接运行：确保 worldbuilder 包可导入
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import procgen as pg
-from procgen.dungeon import to_ascii
+import worldbuilder as wb
+from worldbuilder.dungeon import to_ascii
 
 
 def _save_png(arr, path):
@@ -30,7 +30,7 @@ def _save_png(arr, path):
 
 
 def cmd_terrain(a):
-    t = pg.generate_terrain(a.size, a.size, seed=a.seed)
+    t = wb.generate_terrain(a.size, a.size, seed=a.seed)
     print("地形类别分布:", {pg.TERRAIN_NAMES[k]: int((t['classes'] == k).sum())
                             for k in range(5)})
     if a.out:
@@ -38,18 +38,18 @@ def cmd_terrain(a):
 
 
 def cmd_dungeon(a):
-    d = pg.generate_dungeon(a.w, a.h, rooms=a.rooms, seed=a.seed)
+    d = wb.generate_dungeon(a.w, a.h, rooms=a.rooms, seed=a.seed)
     print(f"房间数: {len(d['rooms'])}  连接数: {len(d['connections'])}")
     print(to_ascii(d["grid"]))
 
 
 def cmd_name(a):
-    names = pg.NameGenerator(style=a.style, seed=a.seed).generate(a.n)
+    names = wb.NameGenerator(style=a.style, seed=a.seed).generate(a.n)
     print("\n".join(names))
 
 
 def cmd_loot(a):
-    table = pg.LootTable([
+    table = wb.LootTable([
         ("金币", 50, (1, 10)),
         ("药水", 10, (1, 3)),
         ("宝石", 5, (1, 2)),
@@ -68,7 +68,7 @@ def cmd_noise(a):
 
 
 def main():
-    p = argparse.ArgumentParser(description="procgen 程序化生成演示")
+    p = argparse.ArgumentParser(description="worldbuilder 程序化生成演示")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     pt = sub.add_parser("terrain"); pt.add_argument("--size", type=int, default=64)
