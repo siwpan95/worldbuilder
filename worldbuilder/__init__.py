@@ -10,7 +10,8 @@
 """
 from __future__ import annotations
 
-from .noise import (value_noise, perlin_noise, fractal_noise, fbm, simplex_noise)
+from .noise import (value_noise, perlin_noise, fractal_noise, fbm, simplex_noise,
+                    warp_noise, ridged_noise, cellular_noise)
 from .dungeon import (generate_dungeon, generate_dungeon_bsp, generate_cave,
                       to_ascii)
 from .town import generate_town
@@ -24,6 +25,7 @@ from .road import (gobi_corridor, sample_height, smoothstep)
 
 __all__ = [
     "value_noise", "perlin_noise", "fractal_noise", "fbm", "simplex_noise",
+    "warp_noise", "ridged_noise", "cellular_noise",
     "generate_dungeon", "generate_dungeon_bsp", "generate_cave", "to_ascii",
     "generate_town",
     "NameGenerator",

@@ -163,3 +163,163 @@ def simplex_noise(x, y, seed: int = 0) -> np.ndarray:
                  np.full_like(y0, 1.0 - 2.0 * G2), 1, 1)
     n = 70.0 * (n0 + n1 + n2)
     return np.clip((n + 1.0) / 2.0, 0.0, 1.0)
+
+
+# ---- v2 噪声：域扭曲（domain warp）/ 脊状分形（ridged）/ 细胞（Worley）----
+# 说明：以下均为新增 API，不改变上面任何函数的既有语义与输出。
+
+
+def _hash_ch(ix, iy, seed, channel):
+    """同一整数格点的第 channel 路独立随机值（用于特征点抖动）。"""
+    return _hash2(ix, iy, np.int64(seed) + np.int64(channel) * 1013)
+
+
+# 域扭曲可用的基噪声
+_WARP_BASES = ("fbm", "fractal", "perlin", "value", "simplex")
+
+
+def _base_noise(name, x, y, seed):
+    """按名字直采基噪声（warp_noise 用）。"""
+    name = str(name).lower()
+    if name == "fbm":
+        return fbm(x, y, seed=seed)
+    if name == "fractal":
+        return fractal_noise(x, y, seed=seed)
+    if name == "perlin":
+        return perlin_noise(x, y, seed=seed)
+    if name == "value":
+        return value_noise(x, y, seed=seed)
+    if name == "simplex":
+        return simplex_noise(x, y, seed=seed)
+    raise ValueError(
+        "未知 base=%r，可选：%s" % (name, ", ".join(_WARP_BASES)))
+
+
+def warp_noise(x, y, seed: int = 0, warp_scale: float = 0.5,
+               warp_strength: float = 1.0, base: str = "fbm") -> np.ndarray:
+    """域扭曲（domain warp）：先用低频噪声求偏移量，再对扭曲后的坐标采基噪声。
+
+    参数：
+        x, y:          标量或同形/可广播数组
+        seed:          随机种子
+        warp_scale:    扭曲场的采样频率（相对于基噪声，0.5 即低频一半）
+        warp_strength: 偏移振幅，单位为输入坐标（1.0 ≈ 一个基噪声格距）
+        base:          基噪声，可选 "fbm"（默认，与 fbm() 默认参数一致）、
+                       "fractal"、"perlin"、"value"、"simplex"
+
+    偏移量为 ``(2*perlin(...) - 1) * warp_strength``，即每个分量落在
+    ±warp_strength 内；因为扭曲场本身是低频平滑的，相邻像素的偏移量近似
+    相同，画面会被“拉伸”而不会被撕成噪点。若把 warp_strength 调得远大于 1
+    （多个格距）且 warp_scale 不相应调小，位移场梯度会超过 1，画面开始出现
+    折叠/噪点——这是域扭曲的固有性质，不是实现问题。
+
+    ``warp_strength=0`` 时偏移量恰为 0，输出与 ``base`` 直采结果逐位相等。
+
+    返回 float64 数组（0..1，随基噪声口径）。
+    """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    xs, ys = np.broadcast_arrays(x, y)
+    # 两路不同 seed 的低频扭曲场
+    wx = perlin_noise(xs * warp_scale, ys * warp_scale, seed=seed + 1013)
+    wy = perlin_noise(xs * warp_scale, ys * warp_scale, seed=seed + 2027)
+    # perlin 输出 0..1 -> 居中到 -1..1，再乘强度
+    dx = (wx * 2.0 - 1.0) * warp_strength
+    dy = (wy * 2.0 - 1.0) * warp_strength
+    return _base_noise(base, xs + dx, ys + dy, seed)
+
+
+def ridged_noise(x, y, octaves: int = 4, lacunarity: float = 2.0,
+                 gain: float = 0.5, seed: int = 0,
+                 sharpness: float = 2.0) -> np.ndarray:
+    """脊状分形（ridged fractal）：每层取脊 + 幂次加深，返回 0..1。
+
+    每层噪声 n∈[0,1] 先折叠成脊 ``r = 1 - |2n - 1|``（n=0.5 处为脊顶），
+    再按 ``r ** sharpness`` 加深（sharpness>1 时脊更窄、谷更平）。各层按
+    ``gain`` 加权求和后除以权重和（与 fbm 同一归一化口径），故输出 0..1。
+
+    参数：
+        octaves:    叠加层数（>=1）
+        lacunarity: 每层频率倍增
+        gain:       每层振幅衰减
+        seed:       随机种子
+        sharpness:  脊的幂次（>0，默认 2.0）
+    """
+    if int(octaves) < 1:
+        raise ValueError("octaves 必须 >= 1")
+    if not sharpness > 0.0:
+        raise ValueError("sharpness 必须 > 0")
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    total = np.zeros(np.broadcast(x, y).shape, dtype=np.float64)
+    amp = 1.0
+    freq = 1.0
+    maxv = 0.0
+    for o in range(int(octaves)):
+        n = perlin_noise(x * freq, y * freq, seed=seed + o)
+        ridge = 1.0 - np.abs(2.0 * n - 1.0)
+        total += amp * (ridge ** sharpness)
+        maxv += amp
+        amp *= gain
+        freq *= lacunarity
+    return np.clip(total / maxv, 0.0, 1.0)
+
+
+# 单元格搜索的距离上界：特征点限制在单位格内时，3x3 邻域内最近点距离 <= √2
+_CELL_BOUND = np.sqrt(2.0)
+_CELL_TYPES = ("f1", "f2", "f2f1")
+
+
+def cellular_noise(x, y, seed: int = 0, jitter: float = 1.0,
+                   return_type: str = "f1") -> np.ndarray:
+    """细胞噪声（Worley / Voronoi），返回 0..1。
+
+    每个单位格内放一个特征点，位置为 ``格角 + jitter * hash2(格点)``；
+    查询点在其所在格 + 3x3 邻域（共 9 个候选）中搜索。
+
+    参数：
+        jitter:      抖动强度，[0,1]。0 = 特征点固定在格角（规整晶格），
+                     1 = 特征点可落在格内任意位置（默认）。
+        return_type: "f1"   到最近特征点的距离（默认，平滑的细胞块）
+                     "f2"   到次近特征点的距离
+                     "f2f1" f2 - f1（在细胞边界处趋近 0，可直接当边界线）
+
+    归一化：三种类型都用同一个尺度 ``√2``（3x3 搜索下 F1 的理论上界：
+    查询点位于格角、9 个特征点都在各自格的对角远端时取到），再 clip 到
+    0..1。用同一尺度是为了让 f1 / f2 / f2f1 三者可直接比较与叠加；
+    f2、f2f1 在极少数配置下可能越过 √2，会被 clip（clip 单调，不破坏
+    f1<=f2、f2f1>=0 的关系）。
+    """
+    rt = str(return_type).lower()
+    if rt not in _CELL_TYPES:
+        raise ValueError(
+            "未知 return_type=%r，可选：%s" % (return_type, ", ".join(_CELL_TYPES)))
+    if not 0.0 <= jitter <= 1.0:
+        raise ValueError("jitter 必须在 [0, 1] 内")
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    xs, ys = np.broadcast_arrays(x, y)
+    xi = np.floor(xs).astype(np.int64)
+    yi = np.floor(ys).astype(np.int64)
+    f1 = np.full(xs.shape, np.inf, dtype=np.float64)
+    f2 = np.full(xs.shape, np.inf, dtype=np.float64)
+    # 3x3 邻域：对小邻域展开（9 次向量化运算，无逐像素循环）
+    for oy in (-1, 0, 1):
+        for ox in (-1, 0, 1):
+            cx = xi + ox
+            cy = yi + oy
+            px = cx + jitter * _hash_ch(cx, cy, seed, 0)
+            py = cy + jitter * _hash_ch(cx, cy, seed, 1)
+            ddx = px - xs
+            ddy = py - ys
+            d = np.sqrt(ddx * ddx + ddy * ddy)
+            # 先更新次近，再用旧 f1 更新最近
+            f2 = np.minimum(f2, np.maximum(f1, d))
+            f1 = np.minimum(f1, d)
+    if rt == "f1":
+        val = f1
+    elif rt == "f2":
+        val = f2
+    else:
+        val = f2 - f1
+    return np.clip(val / _CELL_BOUND, 0.0, 1.0)
