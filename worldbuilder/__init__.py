@@ -28,6 +28,8 @@ from .climate import (temperature_map, precipitation_map,
                       classify_biomes_climate, climate_maps, CLIMATE_BIOME_NAMES)
 from .worldgen import (generate_world_full, describe,
                        WATER_NONE, WATER_RIVER, WATER_LAKE, WATER_SEA)
+from .worldspec import (save_world, load_world, read_meta, validate,
+                        WorldSpecError, SPEC_NAME)
 
 __all__ = [
     "value_noise", "perlin_noise", "fractal_noise", "fbm", "simplex_noise",
@@ -50,4 +52,7 @@ __all__ = [
     # 世界编排
     "generate_world_full", "describe",
     "WATER_NONE", "WATER_RIVER", "WATER_LAKE", "WATER_SEA",
+    # worldspec v1（三仓之间的文件契约）
+    "save_world", "load_world", "read_meta", "validate",
+    "WorldSpecError", "SPEC_NAME",
 ]

@@ -55,6 +55,30 @@
   `tests/test_worldgen.py`（13）。钉住的不变量包括：填洼只抬不降且不留内部洼地、
   填洼幂等且不动边界、汇水守恒与下游单调、河流收尾只能是边界/汇/汇流点、
   雨影随风向翻转、极地不会判成热带沙漠、同 seed 逐位可复现、老 8 类接口未变。
+- **`worldbuilder/worldspec.py`（worldspec/1）**：三仓之间的**文件契约**。
+  `save_world()` 把 `generate_world_full()` 的产物落成自描述目录（`meta.json` + 6 个 npy +
+  `rivers.geojson` + `lakes.json`）；`load_world(layers=...)` 可按需只取几层；
+  `read_meta()` 只读清单；`validate()` 返回问题清单（缺必需层 / 形状与 size 不符 /
+  water 出现未定义编码 / GeoJSON 坏掉）。
+  - 坐标约定写死在 meta：右手系、Y 向上、`height[r][c]` 的 r 对应 +z（与 3dworld 的行主序一致）、
+    单位米、`tile_m` 给出格距；`spec` 字段严格匹配，不猜字段式兼容。
+  - 跨仓实测：`save_world(256², tile_m=4)` → 3dworld `TerrainLod` 直接读 `height`，
+    选层 40 节点 / 20,480 三角，覆盖检查 `min=max=1`、无空洞。
+- **`tests/test_worldspec.py`**（14 项）：数组往返逐位一致、河流折线几何保真、只取子集图层、
+  spec 版本拒读、缺必需层报错 / 缺可选层返回 None、形状不符拒读、`validate` 抓出坏 water 编码与
+  伪 GeoJSON、同目录重跑不残留旧图层。
+- **`worldbuilder/worldspec.py`（worldspec/1）**：三仓之间的**文件契约**。
+  `save_world()` 把 `generate_world_full()` 的产物落成自描述目录（`meta.json` + 6 个 npy +
+  `rivers.geojson` + `lakes.json`）；`load_world(layers=...)` 可按需只取几层；
+  `read_meta()` 只读清单；`validate()` 返回问题清单（缺必需层 / 形状与 size 不符 /
+  water 出现未定义编码 / GeoJSON 坏掉）。
+  - 坐标约定写死在 meta：右手系、Y 向上、`height[r][c]` 的 r 对应 +z（与 3dworld 的行主序一致）、
+    单位米、`tile_m` 给出格距；`spec` 字段严格匹配，不猜字段式兼容。
+  - 跨仓实测：`save_world(256², tile_m=4)` → 3dworld `TerrainLod` 直接读 `height`，
+    选层 40 节点 / 20,480 三角，覆盖检查 `min=max=1`、无空洞。
+- **`tests/test_worldspec.py`**（14 项）：数组往返逐位一致、河流折线几何保真、只取子集图层、
+  spec 版本拒读、缺必需层报错 / 缺可选层返回 None、形状不符拒读、`validate` 抓出坏 water 编码与
+  伪 GeoJSON、同目录重跑不残留旧图层。
 - 来由：原库只有"高度 → 生物群系"一条边，没有水系与气候，聚落/道路/生态都无从挂载。
   层的划分参考 Azgaar Fantasy Map Generator（MIT），算法实现自写；记录见 `docs/借鉴记账.md`。
 

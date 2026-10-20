@@ -37,6 +37,14 @@ Gitee 仓库路径同步更名为 `siwpan/worldbuilder`（旧路径 `siwpan/proc
 - `road`：`gobi_corridor(rows, cols, extent, seed, ...)` —— 把**公路走廊挖进分形地形**：走廊 `|across| < road_half` 压平到 `corridor_level`、外侧用 `smoothstep` 过渡（硬切会产生锯齿法线）、背景叠加 ridged 远山；返回 `(hm, coords_x, coords_z)`。配套 `sample_height(hm, x, z, height, y_base)` 双线性采样（道具贴地）与 `smoothstep(t)`
 - `hydro`：**水文科**。`fill_depressions`（Priority-Flood 填洼，边界为出水口）/ `flow_directions`（D8）/ `flow_accumulation`（按高程降序累积）/ `extract_rivers`（抽折线，`threshold` 缺省按 `格数/80` 自适应）/ `lakes` / `coastline` / `river_width`（`w ∝ Q^0.5`）/ `hydrology` 一次跑完
 - `climate`：**气候科**。`temperature_map`（纬度余弦带 − 高度递减）/ `precipitation_map`（沿盛行风逐列输运 + 地形抬升致雨，产生雨影）/ `classify_biomes_climate`（12 类 Whittaker）/ `climate_maps` 一次跑完
+- `worldspec`：**三仓之间的文件契约**（`save_world` / `load_world` / `read_meta` / `validate`）。
+  产物目录自描述：`meta.json`（spec 版本/尺寸/海平面/坐标约定/tile_m/seed）+ `height.f32.npy`
+  + `biome.u8.npy` + `water.u8.npy` + `temperature/precip` + `rivers.geojson`（LineString）+ `lakes.json`。
+  **只共享格式，不共享代码**——3dworld / an-engine 各自读自己需要的层。
+- `worldspec`：**三仓之间的文件契约**（`save_world` / `load_world` / `read_meta` / `validate`）。
+  产物目录自描述：`meta.json`（spec 版本/尺寸/海平面/坐标约定/tile_m/seed）+ `height.f32.npy`
+  + `biome.u8.npy` + `water.u8.npy` + `temperature/precip` + `rivers.geojson`（LineString）+ `lakes.json`。
+  **只共享格式，不共享代码**——3dworld / an-engine 各自读自己需要的层。
 - `worldgen`：**编排**。`generate_world_full(...)` 按「高度 → 海平面 → 填洼 → 流向 → 汇水 → 河/湖/海岸 → 温度 → 降水 → 群系」固定顺序产出全层数据；`describe(world)` 打一行摘要
 
 ## 用法
@@ -70,6 +78,22 @@ w["water"]         # uint8：0 无 / 1 河 / 2 湖 / 3 海
 w["rivers"][0]     # {"points": [(x, y), ...], "mouth": ..., "acc_max": ...}
 w["biomes"]        # int8，12 类，见 wb.CLIMATE_BIOME_NAMES
 w["temperature"]   # °C；w["precipitation"] 是 0..1 相对指数
+```
+
+落成 worldspec 目录，交给渲染端/玩法端：
+
+```python
+meta = wb.save_world(w, "worlds/seed7")      # 写 meta.json + 6 个 npy + 2 个 json
+back = wb.load_world("worlds/seed7", layers=("height", "water"))   # 只取要用的层
+assert wb.validate("worlds/seed7") == []      # 体检：缺层/形状不符/坏 GeoJSON 都会列出来
+```
+
+落成 worldspec 目录，交给渲染端/玩法端：
+
+```python
+meta = wb.save_world(w, "worlds/seed7")      # 写 meta.json + 6 个 npy + 2 个 json
+back = wb.load_world("worlds/seed7", layers=("height", "water"))   # 只取要用的层
+assert wb.validate("worlds/seed7") == []      # 体检：缺层/形状不符/坏 GeoJSON 都会列出来
 ```
 
 只要水系或只要气候，也可以拆开用：
