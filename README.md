@@ -33,6 +33,7 @@ Gitee 仓库路径仍为 `siwpan/procgen`（历史链接继续有效），**不�
 - `loot`：`LootTable(entries).roll(n, unique=...)` 加权随机掉落，`unique=True` 无重复
 - `terrain`：`generate_heightmap`（支持 `falloff` 岛屿）/ `classify` / `generate_terrain` / `generate_moisture` / `classify_biomes`（Whittaker 生物群系，8 类可达）/ `generate_world`
 - `town`：`generate_town(seed, n_wards, walled)` —— 从零移植自 watabou 中世纪奇幻城市生成器：Voronoi 划区 + 城墙(塔楼/城门) + 图寻路路网 + ward 加权分配 + 建筑递归分割。返回 {bounds, center, wall, streets, wards, ...}，坐标为抽象单位
+- `road`：`gobi_corridor(rows, cols, extent, seed, ...)` —— 把**公路走廊挖进分形地形**：走廊 `|across| < road_half` 压平到 `corridor_level`、外侧用 `smoothstep` 过渡（硬切会产生锯齿法线）、背景叠加 ridged 远山；返回 `(hm, coords_x, coords_z)`。配套 `sample_height(hm, x, z, height, y_base)` 双线性采样（道具贴地）与 `smoothstep(t)`
 
 ## 用法
 ```python

@@ -20,6 +20,7 @@ from .terrain import (generate_heightmap, classify, generate_terrain,
                       generate_moisture, classify_biomes, generate_world,
                       WATER, SAND, GRASS, FOREST, MOUNTAIN, TERRAIN_NAMES,
                       BIOME_NAMES)
+from .road import (gobi_corridor, sample_height, smoothstep)
 
 __all__ = [
     "value_noise", "perlin_noise", "fractal_noise", "fbm", "simplex_noise",
@@ -31,4 +32,5 @@ __all__ = [
     "generate_moisture", "classify_biomes", "generate_world",
     "WATER", "SAND", "GRASS", "FOREST", "MOUNTAIN", "TERRAIN_NAMES",
     "BIOME_NAMES",
+    "gobi_corridor", "sample_height", "smoothstep",
 ]

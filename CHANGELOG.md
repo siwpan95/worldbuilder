@@ -21,6 +21,20 @@
 - 打包元数据补全：作者、MIT 许可、keywords、classifiers、依赖声明。
 - 依赖：仅 `numpy>=1.24.0`；CLI 绘图为可选 `Pillow`（`pip install worldbuilder[cli]`）。
 
+## [Unreleased]
+
+### Added
+
+- **`worldbuilder/road.py`**（公路走廊）：`gobi_corridor()` 把公路"挖"进
+  `noise.fractal_noise` 生成的分形地形——路基压平到 `corridor_level`、路侧用
+  `smoothstep` 过渡、背景叠 ridged 远山；返回 `(hm, coords_x, coords_z)`。
+  配套 `sample_height()`（双线性贴地采样）与 `smoothstep()`。
+  已在 `__init__` 顶层导出，可 `wb.gobi_corridor(...)` 直接使用。
+- **`test_road.py`**：5 组断言（走廊压平且整行等高 / 远山抬升 / 同 seed 逐位一致 /
+  `sample_height` 精确值 / smoothstep 端点性质）。
+- 来由：短剧《最后一百公里》的戈壁公路场景需要一个能直接喂给渲染端
+  heightfield 的地形源（原先只有自然地表 `terrain.py`，没有道路能力）。
+
 ### 已作废
 
 - 原 `## [1.0.0] - 2026-08-27`（旧包名 `procgen` 的首个 Gitee 发行版）已删除重建。
