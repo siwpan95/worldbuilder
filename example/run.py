@@ -21,9 +21,9 @@ import numpy as np
 
 # ---- 让 worldbuilder 根目录（本示例的上一级）可被 import ----
 HERE = os.path.dirname(os.path.abspath(__file__))
-PROCGEN_ROOT = os.path.dirname(HERE)
-if PROCGEN_ROOT not in sys.path:
-    sys.path.insert(0, PROCGEN_ROOT)
+WB_ROOT = os.path.dirname(HERE)
+if WB_ROOT not in sys.path:
+    sys.path.insert(0, WB_ROOT)
 import worldbuilder as wb
 from worldbuilder.dungeon import to_ascii
 
@@ -44,11 +44,11 @@ def make_world(seed: int) -> dict:
     moist = wb.generate_moisture(64, 64, seed=seed)
     lo, hi = float(hm.min()), float(hm.max())
     hm_n = (hm - lo) / (hi - lo) if hi > lo else hm
-    biomes = pg.classify_biomes(hm_n, moist)
-    dist = {pg.BIOME_NAMES[k]: int((biomes == k).sum()) for k in range(8)}
+    biomes = wb.classify_biomes(hm_n, moist)
+    dist = {wb.BIOME_NAMES[k]: int((biomes == k).sum()) for k in range(8)}
     path = os.path.join(OUT, "world_biomes.png")
     classes_to_png(biomes, BIOME_PALETTE).save(path)
-    add_legend(path, "生物群系", [(pg.BIOME_NAMES[k], BIOME_PALETTE[k]) for k in range(8)])
+    add_legend(path, "生物群系", [(wb.BIOME_NAMES[k], BIOME_PALETTE[k]) for k in range(8)])
     gray_to_png(hm).save(os.path.join(OUT, "world_heightmap.png"))
     gray_to_png(moist).save(os.path.join(OUT, "world_moisture.png"))
 
@@ -56,10 +56,10 @@ def make_world(seed: int) -> dict:
     himg = wb.generate_heightmap(64, 64, seed=seed, scale=0.07, octaves=5, falloff=0.35)
     lo2, hi2 = float(himg.min()), float(himg.max())
     himg_n = (himg - lo2) / (hi2 - lo2) if hi2 > lo2 else himg
-    island = pg.classify_biomes(himg_n, moist)
+    island = wb.classify_biomes(himg_n, moist)
     ipath = os.path.join(OUT, "world_island.png")
     classes_to_png(island, BIOME_PALETTE).save(ipath)
-    add_legend(ipath, "岛屿版", [(pg.BIOME_NAMES[k], BIOME_PALETTE[k]) for k in range(8)])
+    add_legend(ipath, "岛屿版", [(wb.BIOME_NAMES[k], BIOME_PALETTE[k]) for k in range(8)])
     return {"dist": dist, "seed": seed}
 
 
@@ -101,9 +101,9 @@ def make_noise(seed: int) -> dict:
     xs, ys = np.meshgrid(np.arange(size), np.arange(size))
     # 用缩放后的分数坐标，避免整数格点退化为 0.5
     fx, fy = xs * 0.08, ys * 0.08
-    vn = pg.value_noise(fx, fy, seed=seed)
-    pn = pg.perlin_noise(fx, fy, seed=seed)
-    fn = pg.fbm(fx, fy, octaves=5, seed=seed)
+    vn = wb.value_noise(fx, fy, seed=seed)
+    pn = wb.perlin_noise(fx, fy, seed=seed)
+    fn = wb.fbm(fx, fy, octaves=5, seed=seed)
     sn = wb.simplex_noise(fx, fy, seed=seed)
     gray_to_png(vn).save(os.path.join(OUT, "noise_value.png"))
     gray_to_png(pn).save(os.path.join(OUT, "noise_perlin.png"))
@@ -169,7 +169,7 @@ def write_report(seed, world, dungeons, cave, names, loot, town):
     lines.append("# 冒险者公会任务包（worldbuilder 实操成果）")
     lines.append("")
     lines.append(f"- 种子 seed = {seed}")
-    lines.append(f"- 生成时间由运行环境决定；输出目录：{OUT}")
+    lines.append("- 生成时间由运行环境决定；输出目录：<PATH>\example\output")
     lines.append("")
     lines.append("## 1. 世界与生物群系 (generate_world)")
     lines.append("")

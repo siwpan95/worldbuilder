@@ -31,7 +31,7 @@ def _save_png(arr, path):
 
 def cmd_terrain(a):
     t = wb.generate_terrain(a.size, a.size, seed=a.seed)
-    print("地形类别分布:", {pg.TERRAIN_NAMES[k]: int((t['classes'] == k).sum())
+    print("地形类别分布:", {wb.TERRAIN_NAMES[k]: int((t['classes'] == k).sum())
                             for k in range(5)})
     if a.out:
         _save_png(t["heightmap"], a.out)
@@ -60,7 +60,7 @@ def cmd_loot(a):
 
 def cmd_noise(a):
     xs, ys = np.meshgrid(np.arange(a.size), np.arange(a.size))
-    arr = pg.fractal_noise(xs, ys, octaves=5, seed=a.seed)
+    arr = wb.fractal_noise(xs, ys, octaves=5, seed=a.seed)
     if a.out:
         _save_png(arr, a.out)
     else:
