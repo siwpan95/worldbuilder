@@ -39,12 +39,19 @@ Gitee 仓库路径同步更名为 `siwpan/worldbuilder`（旧路径 `siwpan/proc
 - `climate`：**气候科**。`temperature_map`（纬度余弦带 − 高度递减）/ `precipitation_map`（沿盛行风逐列输运 + 地形抬升致雨，产生雨影）/ `classify_biomes_climate`（12 类 Whittaker）/ `climate_maps` 一次跑完
 - `worldspec`：**三仓之间的文件契约**（`save_world` / `load_world` / `read_meta` / `validate`）。
   产物目录自描述：`meta.json`（spec 版本/尺寸/海平面/坐标约定/tile_m/seed）+ `height.f32.npy`
-  + `biome.u8.npy` + `water.u8.npy` + `temperature/precip` + `rivers.geojson`（LineString）+ `lakes.json`。
+  + `biome.u8.npy` + `water.u8.npy` + `temperature/precip` + `rivers.geojson`（LineString）
+  + `lakes.json`；跑了 POI/路网时多两个可选文件 `pois.json`（GeoJSON Point）
+  与 `graph.json`（nodes + edges，边带折线）。
   **只共享格式，不共享代码**——3dworld / an-engine 各自读自己需要的层。
-- `worldspec`：**三仓之间的文件契约**（`save_world` / `load_world` / `read_meta` / `validate`）。
-  产物目录自描述：`meta.json`（spec 版本/尺寸/海平面/坐标约定/tile_m/seed）+ `height.f32.npy`
-  + `biome.u8.npy` + `water.u8.npy` + `temperature/precip` + `rivers.geojson`（LineString）+ `lakes.json`。
-  **只共享格式，不共享代码**——3dworld / an-engine 各自读自己需要的层。
+- `poi`：**选址**。`place_pois(world, seed, settlements=..., spacing=...)` —— 按水源/坡度/海拔带/群系/间距打分，
+  贪心选出 `town` / `village` / `port` / `mine` / `ruin` / `lighthouse`；所有点都限制在**主陆块**上
+  （`main_landmass`，河算可通行），否则路修不过去。名字复用 `NameGenerator`。
+- `roadnet`：**路网**。`build_road_network(pois, world)` —— 网格最小代价路（坡度 + 涉水，8 邻接、禁切角），
+  聚落间 MST + 回路补边，矿/遗迹/灯塔接最近聚落；路在水上的段落自动生成 `bridge`/`ford` 节点；
+  返回 `{nodes, edges, crossings, mask, stats}`，`describe_network(net)` 一行摘要。
+- `wfc`：**波函数坍缩**。`generate_wfc(w, h, Tileset)` 是通用引擎（熵最小 + 弧相容传播 + 回溯）；
+  `wang_tileset()` 给 15 个王瓦片，`generate_dungeon_wfc(w, h)` 直接产出 `(3h, 3w)` 的 1/0 地牢网格
+  （地板保证单连通）。
 - `worldgen`：**编排**。`generate_world_full(...)` 按「高度 → 海平面 → 填洼 → 流向 → 汇水 → 河/湖/海岸 → 温度 → 降水 → 群系」固定顺序产出全层数据；`describe(world)` 打一行摘要
 
 ## 用法
@@ -62,6 +69,20 @@ drops = wb.LootTable([("金币",50,(1,10)),("传说剑",1,(1,1))]).roll(5)
 uniq = wb.LootTable([("a",50,(1,2)),("b",30,(1,2))]).roll(3, unique=True)
 wld = wb.generate_world(80, 80, seed=11, falloff=0.3)  # 含生物群系
 sx = wb.simplex_noise(xs, ys, seed=1)                  # 2D simplex
+```
+
+### 完整世界（含聚落与路网）
+
+```python
+w = wb.generate_world_complete(160, 160, seed=7, falloff=0.35)
+print(wb.describe_complete(w))
+# 兴趣点 10 个：village 4、mine 2、town 1、port 1、lighthouse 1、ruin 1
+# 路网：6 聚落 / 10 条路 / 0 处过河 / 总长 605 格 / 绕行比 1.28
+
+wb.save_world(w, "worlds/seed7")        # 自动写 pois.json / graph.json
+
+d = wb.generate_dungeon_wfc(24, 16, seed=3)   # WFC 地牢
+print(d["grid"].shape)                         # (48, 72)，1=地板
 ```
 
 ### 整套世界（水文 + 气候 + 群系）

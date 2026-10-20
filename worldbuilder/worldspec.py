@@ -15,6 +15,8 @@
     precip.f32.npy     相对降水指数 [0,1]
     rivers.geojson     河流折线（LineString，坐标为网格单位）
     lakes.json         湖泊摘要（面积、包围盒、水面高程）
+    pois.json          兴趣点（GeoJSON Point：城镇/港口/矿/遗迹）——可选
+    graph.json         路网（nodes + edges，边带折线）——可选
 
 坐标约定（写死在 meta 里，消费方按它解释数组）：
 - 右手系、**Y 向上**、X 向东、Z 向南；
@@ -49,6 +51,10 @@ _LAYERS = {
 }
 
 
+#: 可选 JSON 图层（不是数组，单独处理）
+_JSON_LAYERS = {"pois": "pois.json", "graph": "graph.json"}
+
+
 class WorldSpecError(ValueError):
     """worldspec 目录不合法（版本不匹配、缺图层、尺寸不一致）。"""
 
@@ -56,6 +62,7 @@ class WorldSpecError(ValueError):
 def _meta_of(world: dict, *, tile_m: float, generator: str) -> dict:
     h = np.asarray(world["height"])
     rivers = world.get("rivers") or []
+    roads = world.get("roads") or {}
     return {
         "spec": SPEC_NAME,
         "generator": generator,
@@ -73,7 +80,19 @@ def _meta_of(world: dict, *, tile_m: float, generator: str) -> dict:
                    "units": "grid", "coord": "x,z"},
         "lakes": {"count": int((world.get("lakes") or {}).get("count", 0)),
                   "file": "lakes.json"},
+        **({"pois": {"count": len(world.get("pois") or []),
+                     "file": "pois.json", "units": "grid", "coord": "x,z"}}
+           if world.get("pois") else {}),
+        **({"graph": {"nodes": len(roads.get("nodes") or []),
+                      "edges": len(roads.get("edges") or []),
+                      "file": "graph.json", "units": "grid", "coord": "x,z"}}
+           if roads else {}),
     }
+
+
+def _as_dict(obj) -> dict:
+    """``Poi`` 或 dict 统一成 dict（``Poi`` 有 ``to_dict``）。"""
+    return obj.to_dict() if hasattr(obj, "to_dict") else dict(obj)
 
 
 def _key_of(layer: str) -> str:
@@ -142,6 +161,38 @@ def save_world(world: dict, out_dir, *, tile_m: float = 1.0,
         json.dumps({"count": len(lake_rows), "lakes": lake_rows}, ensure_ascii=False),
         encoding="utf-8")
 
+    pois = world.get("pois") or []
+    if pois:
+        feats = []
+        for p in pois:
+            d = _as_dict(p)
+            feats.append({
+                "type": "Feature",
+                "geometry": {"type": "Point", "coordinates": [float(d["x"]), float(d["z"])]},
+                "properties": {"id": d["id"], "kind": d["kind"], "name": d.get("name", ""),
+                               "score": float(d.get("score", 0.0)),
+                               "meta": d.get("meta") or {}},
+            })
+        (out / "pois.json").write_text(
+            json.dumps({"type": "FeatureCollection", "spec": SPEC_NAME,
+                        "features": feats}, ensure_ascii=False), encoding="utf-8")
+
+    roads = world.get("roads") or {}
+    if roads.get("edges") is not None:
+        nodes = [_as_dict(n) for n in (roads.get("nodes") or [])]
+        edges = []
+        for e in roads.get("edges") or []:
+            edges.append({
+                "a": e["a"], "b": e["b"], "kind": e.get("kind", "trunk"),
+                "length": float(e.get("length", 0.0)),
+                "straight": float(e.get("straight", 0.0)),
+                "cost": float(e.get("cost", 0.0)),
+                "points": [[float(x), float(z)] for x, z in e.get("points") or []],
+            })
+        (out / "graph.json").write_text(
+            json.dumps({"spec": SPEC_NAME, "nodes": nodes, "edges": edges},
+                       ensure_ascii=False), encoding="utf-8")
+
     meta = _meta_of(world, tile_m=tile_m, generator=generator)
     (out / "meta.json").write_text(
         json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -190,6 +241,21 @@ def load_world(spec_dir, *, layers: Optional[Iterable[str]] = None) -> dict:
                 f"图层 {name} 形状 {arr.shape} 与 meta.size {meta['size']} 不一致"
             )
         data[_key_of(name)] = arr
+
+    if (layers is None or "pois" in want) and (out_dir / "pois.json").exists():
+        geo = json.loads((out_dir / "pois.json").read_text(encoding="utf-8"))
+        data["pois"] = [
+            {"id": f["properties"]["id"], "kind": f["properties"]["kind"],
+             "name": f["properties"].get("name", ""),
+             "score": f["properties"].get("score", 0.0),
+             "x": float(f["geometry"]["coordinates"][0]),
+             "z": float(f["geometry"]["coordinates"][1]),
+             "meta": f["properties"].get("meta") or {}}
+            for f in geo.get("features", [])
+        ]
+    if (layers is None or "graph" in want) and (out_dir / "graph.json").exists():
+        g = json.loads((out_dir / "graph.json").read_text(encoding="utf-8"))
+        data["graph"] = {"nodes": g.get("nodes", []), "edges": g.get("edges", [])}
 
     geo_p = out_dir / "rivers.geojson"
     if geo_p.exists() and (layers is None or "rivers" in want):
@@ -245,4 +311,49 @@ def validate(spec_dir) -> List[str]:
                     problems.append(f"rivers.features[{i}] 不是 LineString")
                 elif len(f["geometry"].get("coordinates", [])) < 2:
                     problems.append(f"rivers.features[{i}] 少于 2 个点")
+    size_h, size_w = int(size[0]), int(size[1])
+
+    def _in_bounds(x: float, z: float) -> bool:
+        return -0.5 <= x <= size_w - 0.5 and -0.5 <= z <= size_h - 0.5
+
+    pois_p = out / "pois.json"
+    if pois_p.exists():
+        try:
+            geo = json.loads(pois_p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            problems.append(f"pois.json 不是合法 JSON: {exc}")
+        else:
+            if geo.get("type") != "FeatureCollection":
+                problems.append("pois.json 顶层 type 应为 FeatureCollection")
+            for i, f in enumerate(geo.get("features", [])):
+                geom = f.get("geometry") or {}
+                if geom.get("type") != "Point":
+                    problems.append(f"pois.features[{i}] 不是 Point")
+                    continue
+                x, z = geom.get("coordinates", [0, 0])[:2]
+                if not _in_bounds(float(x), float(z)):
+                    problems.append(f"pois.features[{i}] 坐标 ({x},{z}) 越界 {size}")
+                if not (f.get("properties") or {}).get("id"):
+                    problems.append(f"pois.features[{i}] 缺 id")
+
+    graph_p = out / "graph.json"
+    if graph_p.exists():
+        try:
+            g = json.loads(graph_p.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            problems.append(f"graph.json 不是合法 JSON: {exc}")
+        else:
+            ids = {n.get("id") for n in g.get("nodes", [])}
+            for i, e in enumerate(g.get("edges", [])):
+                if e.get("a") not in ids:
+                    problems.append(f"graph.edges[{i}] 指向未知节点 {e.get('a')!r}")
+                if e.get("b") not in ids:
+                    problems.append(f"graph.edges[{i}] 指向未知节点 {e.get('b')!r}")
+                pts = e.get("points") or []
+                if len(pts) < 2:
+                    problems.append(f"graph.edges[{i}] 折线少于 2 点")
+                for x, z in pts:
+                    if not _in_bounds(float(x), float(z)):
+                        problems.append(f"graph.edges[{i}] 折线点 ({x},{z}) 越界")
+                        break
     return problems

@@ -31,6 +31,27 @@
 
 ### Added
 
+- **聚落 / 路网 / WFC 地牢（P0-4，2026-10-20）**：把"有地理的世界"补成"有人的世界"。
+  - `poi.py`：`place_pois()` 按水源、坡度、海拔带、群系与间距给每格打分，贪心选出
+    `town` / `village` / `port` / `mine` / `ruin` / `lighthouse`。所有候选先限制在
+    `main_landmass()`（**河算可通行**，否则一条贯穿全岛的河会把主陆块劈成两半），
+    这一步是"遗迹被选到离岸孤岛、路修不过去"的直接修复。
+    港口强制临海，矿强制在坡度上四分位，遗迹按"离聚落越远越高分"。
+  - `roadnet.py`：`build_road_network()` 在代价场（坡度 + 涉水，海面 ∞）上跑 A*，
+    8 邻接**禁切角**；聚落间先取 MST 再补 `loops` 条回路，矿/遗迹/灯塔接最近聚落
+    （最近那个连不上就换下一个）。路在水面上的连续段自动生成 `bridge`（≤2 格）/
+    `ford` 节点，过河点因此天然落在路真正要走的位置。
+  - `wfc.py`：通用瓦片 WFC（熵最小 + 弧相容传播 + 有限回溯），`wang_tileset()` 生成
+    15 个王瓦片（按通道数配权重），`generate_dungeon_wfc()` 直接产出 `(3h, 3w)` 的
+    1/0 地牢网格，并**只保留最大连通块**，所以地板天然单连通。
+  - `worldgen.generate_world_complete()`：一次跑完地形 → 水文 → 气候 → POI → 路网；
+    `describe_complete()` 给定性摘要。
+  - `worldspec` 新增两个**可选**图层：`pois.json`（GeoJSON Point）与 `graph.json`
+    （nodes + edges，边带折线）。`meta` 声明数量，`validate()` 会检查 POI 越界、
+    悬空边、折线少于 2 点。**只加文件不改字段**，旧消费方不受影响。
+  - 测试 +45（`test_poi` / `test_roadnet` / `test_wfc` / `test_worldspec_graph`），
+    套件 112 项。256² 全链路（含 27 条路、4 处过河）约 1.4 s。
+
 - **水文 `worldbuilder/hydro.py`（P0-1）**：把"有水系的世界"补齐，顺序固定为
   填洼 → 流向 → 汇水 → 河流/湖泊/海岸。
   - `fill_depressions()`：Priority-Flood（Python 堆），边界为出水口，内部洼地抬到

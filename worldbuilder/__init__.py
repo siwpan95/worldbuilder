@@ -27,9 +27,17 @@ from .hydro import (fill_depressions, flow_directions, flow_accumulation,
 from .climate import (temperature_map, precipitation_map,
                       classify_biomes_climate, climate_maps, CLIMATE_BIOME_NAMES)
 from .worldgen import (generate_world_full, describe,
+                       generate_world_complete, describe_complete,
                        WATER_NONE, WATER_RIVER, WATER_LAKE, WATER_SEA)
 from .worldspec import (save_world, load_world, read_meta, validate,
                         WorldSpecError, SPEC_NAME)
+from .poi import (Poi, place_pois, describe as describe_pois, slope_field,
+                  KIND_TOWN, KIND_VILLAGE, KIND_PORT, KIND_MINE, KIND_RUIN,
+                  KIND_LIGHTHOUSE, KIND_BRIDGE, KIND_FORD, SETTLEMENT_KINDS)
+from .roadnet import (build_road_network, least_cost_path, road_cost_field,
+                      describe_network)
+from .wfc import (Tile, TileSet, wang_tileset, generate_wfc, rasterize,
+                  generate_dungeon_wfc, WfcContradiction)
 
 __all__ = [
     "value_noise", "perlin_noise", "fractal_noise", "fbm", "simplex_noise",
@@ -50,9 +58,16 @@ __all__ = [
     "temperature_map", "precipitation_map", "classify_biomes_climate",
     "climate_maps", "CLIMATE_BIOME_NAMES",
     # 世界编排
-    "generate_world_full", "describe",
+    "generate_world_full", "describe", "generate_world_complete", "describe_complete",
     "WATER_NONE", "WATER_RIVER", "WATER_LAKE", "WATER_SEA",
     # worldspec v1（三仓之间的文件契约）
     "save_world", "load_world", "read_meta", "validate",
     "WorldSpecError", "SPEC_NAME",
+    # POI 选址 / 路网 / WFC
+    "Poi", "place_pois", "describe_pois", "slope_field",
+    "KIND_TOWN", "KIND_VILLAGE", "KIND_PORT", "KIND_MINE", "KIND_RUIN",
+    "KIND_LIGHTHOUSE", "KIND_BRIDGE", "KIND_FORD", "SETTLEMENT_KINDS",
+    "build_road_network", "least_cost_path", "road_cost_field", "describe_network",
+    "Tile", "TileSet", "wang_tileset", "generate_wfc", "rasterize",
+    "generate_dungeon_wfc", "WfcContradiction",
 ]

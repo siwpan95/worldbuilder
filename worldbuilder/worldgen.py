@@ -131,3 +131,54 @@ def describe(world: dict) -> str:
              for code, n in shares if n > 0]
     lines.append("群系：" + "、".join(parts))
     return "\n".join(lines)
+
+def generate_world_complete(width: int = 256, height: int = 256, seed: int = 0,
+                            *, with_pois: bool = True, with_roads: bool = True,
+                            **kwargs) -> dict:
+    """在一次调用里跑完整条流水线：地形 → 水文 → 气候 → POI → 路网。
+
+    额外参数（``settlements`` / ``spacing`` / ``loops`` 等）会分别转给
+    ``place_pois`` / ``build_road_network``；其余 ``kwargs`` 转给
+    ``generate_world_full``。返回的 dict 在 ``generate_world_full`` 的基础上多两项：
+
+    - ``pois``：``list[Poi]``（按 ``score`` 降序）
+    - ``roads``：``build_road_network`` 的产物（``nodes/edges/crossings/mask/stats``）
+
+    落盘直接交给 ``worldspec.save_world``——它认这两个键。
+    """
+    from .poi import place_pois
+    from .roadnet import build_road_network
+
+    poi_keys = {k: kwargs.pop(k) for k in
+                ("settlements", "ports", "mines", "ruins", "lighthouses",
+                 "spacing", "max_slope")
+                if k in kwargs}
+    road_keys = {k: kwargs.pop(k) for k in
+                 ("loops", "slope_cost", "river_cost", "lake_cost", "margin")
+                 if k in kwargs}
+
+    world = generate_world_full(width=width, height=height, seed=seed, **kwargs)
+    if with_pois:
+        poi_seed = poi_keys.pop("seed", seed)
+        pois = place_pois(world, seed=poi_seed, **poi_keys)
+        world["pois"] = pois
+        if with_roads:
+            world["roads"] = build_road_network(pois, world, seed=seed, **road_keys)
+    world["meta"]["version"] = "worldbuilder/world-complete/1"
+    world["meta"]["poi_count"] = len(world.get("pois") or [])
+    world["meta"]["road_edges"] = len((world.get("roads") or {}).get("edges") or [])
+    return world
+
+
+def describe_complete(world: dict) -> str:
+    """``describe`` + 一行 POI/路网摘要；没跑 POI 时退回 ``describe``。"""
+    from .poi import describe as describe_pois
+    from .roadnet import describe_network
+
+    text = describe(world)
+    pois = world.get("pois") or []
+    if pois:
+        text += "\n" + describe_pois(pois, world)
+    if world.get("roads"):
+        text += "\n" + describe_network(world["roads"])
+    return text
