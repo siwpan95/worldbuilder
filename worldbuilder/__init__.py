@@ -22,6 +22,12 @@ from .terrain import (generate_heightmap, classify, generate_terrain,
                       WATER, SAND, GRASS, FOREST, MOUNTAIN, TERRAIN_NAMES,
                       BIOME_NAMES)
 from .road import (gobi_corridor, sample_height, smoothstep)
+from .hydro import (fill_depressions, flow_directions, flow_accumulation,
+                    extract_rivers, lakes, coastline, river_width, hydrology)
+from .climate import (temperature_map, precipitation_map,
+                      classify_biomes_climate, climate_maps, CLIMATE_BIOME_NAMES)
+from .worldgen import (generate_world_full, describe,
+                       WATER_NONE, WATER_RIVER, WATER_LAKE, WATER_SEA)
 
 __all__ = [
     "value_noise", "perlin_noise", "fractal_noise", "fbm", "simplex_noise",
@@ -35,4 +41,13 @@ __all__ = [
     "WATER", "SAND", "GRASS", "FOREST", "MOUNTAIN", "TERRAIN_NAMES",
     "BIOME_NAMES",
     "gobi_corridor", "sample_height", "smoothstep",
+    # 水文（填洼 / 流向 / 汇水 / 河流 / 湖泊 / 海岸）
+    "fill_depressions", "flow_directions", "flow_accumulation",
+    "extract_rivers", "lakes", "coastline", "river_width", "hydrology",
+    # 气候（温度 / 降水 / 生物群系）
+    "temperature_map", "precipitation_map", "classify_biomes_climate",
+    "climate_maps", "CLIMATE_BIOME_NAMES",
+    # 世界编排
+    "generate_world_full", "describe",
+    "WATER_NONE", "WATER_RIVER", "WATER_LAKE", "WATER_SEA",
 ]

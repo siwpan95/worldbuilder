@@ -31,6 +31,33 @@
 
 ### Added
 
+- **水文 `worldbuilder/hydro.py`（P0-1）**：把"有水系的世界"补齐，顺序固定为
+  填洼 → 流向 → 汇水 → 河流/湖泊/海岸。
+  - `fill_depressions()`：Priority-Flood（Python 堆），边界为出水口，内部洼地抬到
+    `出水口 + ε`，ε 让平地面也有微坡（否则 D8 在填平区没有方向）；
+  - `flow_directions()`：D8 最陡下降，只在**严格更低**时给方向；
+  - `flow_accumulation()`：按高程降序把汇水加到下游，纯东向斜面可闭式验证守恒；
+  - `extract_rivers()`：从河源顺流抽折线，汇流处停下（干流优先占位）；
+  - `lakes()` / `coastline()` / `river_width()`（`w ∝ Q^0.5`）/ `hydrology()` 一次跑完。
+  - 成河阈值缺省 `格数/80`：**河数不随分辨率漂移**（96²/192²/256² 同 seed 均 18~22 条）。
+- **气候 `worldbuilder/climate.py`（P0-2）**：把气候绑到地形上，不再是凭空一张湿度噪声。
+  - `temperature_map()`：纬度余弦带（`cos^1.5`）+ 高度递减（默认 6.5℃/km）；
+  - `precipitation_map()`：沿盛行风逐列输运水汽，**海面补到饱和**、陆地按抬升降雨 +
+    背景对流；背风侧因水汽被抽干而自然变干（雨影）。非基本风向吸附到最近 N/E/S/W；
+  - `classify_biomes_climate()`：12 类 Whittaker（含高山/海滩/水体覆盖）；
+  - `climate_maps()` 一次跑完。
+  - 口径：降水输出是**相对指数**（`reference=0.08` 归一），不是毫米年降水量。
+- **编排 `worldbuilder/worldgen.py`**：`generate_world_full()` 按依赖顺序串起全部图层
+  （高度 → 海平面 → 填洼 → 流向 → 汇水 → 河/湖/海岸 → 温度 → 降水 → 群系），
+  返回 `height/filled/water/temperature/precipitation/biomes/rivers/lakes/coast/acc/meta`；
+  `describe(world)` 打一行摘要。海平面可由 `sea_fraction` 分位数反推。
+- **测试 39 项**：`tests/test_hydro.py`（14）、`tests/test_climate.py`（12）、
+  `tests/test_worldgen.py`（13）。钉住的不变量包括：填洼只抬不降且不留内部洼地、
+  填洼幂等且不动边界、汇水守恒与下游单调、河流收尾只能是边界/汇/汇流点、
+  雨影随风向翻转、极地不会判成热带沙漠、同 seed 逐位可复现、老 8 类接口未变。
+- 来由：原库只有"高度 → 生物群系"一条边，没有水系与气候，聚落/道路/生态都无从挂载。
+  层的划分参考 Azgaar Fantasy Map Generator（MIT），算法实现自写；记录见 `docs/借鉴记账.md`。
+
 - **噪声 v2：`warp_noise` / `ridged_noise` / `cellular_noise`**（`worldbuilder/noise.py`）：
   - `warp_noise(...)`：低频场扭曲坐标后再采样基噪声；`warp_strength=0` 时**逐位等于**基噪声直采；
   - `ridged_noise(...)`：`1-|2n-1|` 取脊 + `sharpness` 幂次 + 逐层归一；

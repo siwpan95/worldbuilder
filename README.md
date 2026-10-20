@@ -35,6 +35,9 @@ Gitee 仓库路径同步更名为 `siwpan/worldbuilder`（旧路径 `siwpan/proc
 - `terrain`：`generate_heightmap`（支持 `falloff` 岛屿）/ `classify` / `generate_terrain` / `generate_moisture` / `classify_biomes`（Whittaker 生物群系，8 类可达）/ `generate_world`
 - `town`：`generate_town(seed, n_wards, walled)` —— 从零移植自 watabou 中世纪奇幻城市生成器：Voronoi 划区 + 城墙(塔楼/城门) + 图寻路路网 + ward 加权分配 + 建筑递归分割。返回 {bounds, center, wall, streets, wards, ...}，坐标为抽象单位
 - `road`：`gobi_corridor(rows, cols, extent, seed, ...)` —— 把**公路走廊挖进分形地形**：走廊 `|across| < road_half` 压平到 `corridor_level`、外侧用 `smoothstep` 过渡（硬切会产生锯齿法线）、背景叠加 ridged 远山；返回 `(hm, coords_x, coords_z)`。配套 `sample_height(hm, x, z, height, y_base)` 双线性采样（道具贴地）与 `smoothstep(t)`
+- `hydro`：**水文科**。`fill_depressions`（Priority-Flood 填洼，边界为出水口）/ `flow_directions`（D8）/ `flow_accumulation`（按高程降序累积）/ `extract_rivers`（抽折线，`threshold` 缺省按 `格数/80` 自适应）/ `lakes` / `coastline` / `river_width`（`w ∝ Q^0.5`）/ `hydrology` 一次跑完
+- `climate`：**气候科**。`temperature_map`（纬度余弦带 − 高度递减）/ `precipitation_map`（沿盛行风逐列输运 + 地形抬升致雨，产生雨影）/ `classify_biomes_climate`（12 类 Whittaker）/ `climate_maps` 一次跑完
+- `worldgen`：**编排**。`generate_world_full(...)` 按「高度 → 海平面 → 填洼 → 流向 → 汇水 → 河/湖/海岸 → 温度 → 降水 → 群系」固定顺序产出全层数据；`describe(world)` 打一行摘要
 
 ## 用法
 ```python
@@ -51,6 +54,29 @@ drops = wb.LootTable([("金币",50,(1,10)),("传说剑",1,(1,1))]).roll(5)
 uniq = wb.LootTable([("a",50,(1,2)),("b",30,(1,2))]).roll(3, unique=True)
 wld = wb.generate_world(80, 80, seed=11, falloff=0.3)  # 含生物群系
 sx = wb.simplex_noise(xs, ys, seed=1)                  # 2D simplex
+```
+
+### 整套世界（水文 + 气候 + 群系）
+
+```python
+w = wb.generate_world_full(160, 160, seed=7, falloff=0.35)
+print(wb.describe(w))
+# 尺寸 160x160 | seed=7 | 海平面=0.334
+# 河流 16 条 | 湖泊 111 个 | 海岸格 2460
+# 群系：水域 35.0%、苔原 20.0%、热带沙漠 10.8%、温带草原 7.5%、海滩 6.0%、…
+
+w["height"]        # float32 高度图
+w["water"]         # uint8：0 无 / 1 河 / 2 湖 / 3 海
+w["rivers"][0]     # {"points": [(x, y), ...], "mouth": ..., "acc_max": ...}
+w["biomes"]        # int8，12 类，见 wb.CLIMATE_BIOME_NAMES
+w["temperature"]   # °C；w["precipitation"] 是 0..1 相对指数
+```
+
+只要水系或只要气候，也可以拆开用：
+
+```python
+hy = wb.hydrology(hm, sea_level=0.34)      # filled/dirs/acc/rivers/lakes/coast
+cl = wb.climate_maps(hm, wind_from_deg=270, sea_level=0.34)
 ```
 
 ## 命令行演示
@@ -75,3 +101,12 @@ python run.py --seed 7
 - 本库是独立包，**不依赖 tools 组其他项目**，可直接复制到任意游戏工程内使用（复制优于共享）。
 - 所有随机均带 seed，可复现。
 - 网格约定：`1`=可走/地板，`0`=墙（dungeon 与 cave 一致）。
+- **纬度约定**：`temperature_map` 缺省把整幅图的 y 轴铺满 `+90°…-90°`（即"一张全球图"）。
+  做**区域图**时请显式传 `latitude=` 或改用 `climate_maps(..., latitude=...)`，
+  否则一张 64 行的小地图也会同时出现极地和赤道。
+- **降水是相对指数**（0..1）：原始量是"每列降掉水汽的比例"，按 `reference=0.08` 归一。
+  `reference` 调小 → 世界更湿。别把它当毫米年降水量用。
+- **成河阈值**缺省 `格数/80`：实测 96²/192²/256² 在同一 seed 下都落在 18~22 条主干河，
+  即**河数不随分辨率漂移**；要更密/更疏直接传 `river_threshold=`。
+- **性能**：256² 全链路（含填洼、河流、气候）约 0.35 s（纯 numpy，无 numba）。
+  填洼是 Python 堆实现的 O(n log n)，单次上限 400 万格（`fill_depressions(max_cells=...)`）。
