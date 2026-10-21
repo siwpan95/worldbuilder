@@ -15,7 +15,7 @@ from .noise import (value_noise, perlin_noise, fractal_noise, fbm, simplex_noise
 from .dungeon import (generate_dungeon, generate_dungeon_bsp, generate_cave,
                       to_ascii)
 from .town import generate_town
-from .namegen import NameGenerator
+from .namegen import NameGenerator, GrammarGenerator, grammar_names
 from .loot import LootTable
 from .terrain import (generate_heightmap, classify, generate_terrain,
                       generate_moisture, classify_biomes, generate_world,
@@ -32,12 +32,13 @@ from .worldgen import (generate_world_full, describe,
 from .worldspec import (save_world, load_world, read_meta, validate,
                         WorldSpecError, SPEC_NAME)
 from .poi import (Poi, place_pois, describe as describe_pois, slope_field,
+                  poisson_disk_sample, place_pois_uniform,
                   KIND_TOWN, KIND_VILLAGE, KIND_PORT, KIND_MINE, KIND_RUIN,
                   KIND_LIGHTHOUSE, KIND_BRIDGE, KIND_FORD, SETTLEMENT_KINDS)
 from .roadnet import (build_road_network, least_cost_path, road_cost_field,
                       describe_network)
 from .wfc import (Tile, TileSet, wang_tileset, generate_wfc, rasterize,
-                  generate_dungeon_wfc, WfcContradiction)
+                  generate_wfc_overlapping, generate_dungeon_wfc, WfcContradiction)
 from .dungeongraph import (Room, build_dungeon_graph, detect_rooms,
                            rooms_from_rects, to_ascii as dungeon_to_ascii,
                            EDGE_OPEN, EDGE_LOCKED, EDGE_LOOP,
@@ -52,7 +53,7 @@ __all__ = [
     "warp_noise", "ridged_noise", "cellular_noise",
     "generate_dungeon", "generate_dungeon_bsp", "generate_cave", "to_ascii",
     "generate_town",
-    "NameGenerator",
+    "NameGenerator", "GrammarGenerator", "grammar_names",
     "LootTable",
     "generate_heightmap", "classify", "generate_terrain",
     "generate_moisture", "classify_biomes", "generate_world",
@@ -73,11 +74,12 @@ __all__ = [
     "WorldSpecError", "SPEC_NAME",
     # POI 选址 / 路网 / WFC
     "Poi", "place_pois", "describe_pois", "slope_field",
+    "poisson_disk_sample", "place_pois_uniform",
     "KIND_TOWN", "KIND_VILLAGE", "KIND_PORT", "KIND_MINE", "KIND_RUIN",
     "KIND_LIGHTHOUSE", "KIND_BRIDGE", "KIND_FORD", "SETTLEMENT_KINDS",
     "build_road_network", "least_cost_path", "road_cost_field", "describe_network",
     "Tile", "TileSet", "wang_tileset", "generate_wfc", "rasterize",
-    "generate_dungeon_wfc", "WfcContradiction",
+    "generate_wfc_overlapping", "generate_dungeon_wfc", "WfcContradiction",
     # 地牢图（房间/走廊/锁钥/语义）
     "Room", "build_dungeon_graph", "detect_rooms", "rooms_from_rects",
     "dungeon_to_ascii", "EDGE_OPEN", "EDGE_LOCKED", "EDGE_LOOP",

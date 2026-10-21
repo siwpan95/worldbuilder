@@ -117,3 +117,94 @@ class NameGenerator:
 
     def generate(self, n: int = 1) -> list[str]:
         return [self._one() for _ in range(n)]
+
+
+# ---------------------------------------------------------------------------
+# 文法式命名（Tracery 思路，Apache-2.0）：自研，不搬 Tracery 的 JS 实现。
+# 只借"产生式规则 + #符号# 递归展开 + 可选修饰符"这一思路。
+# ---------------------------------------------------------------------------
+import re
+
+_TOKEN = re.compile(r"#([A-Za-z_][A-Za-z0-9_]*)(?:\.([A-Za-z_][A-Za-z0-9_]*))?#")
+
+#: 修饰符：展开后对结果做的小变换。名字场景常用的几个。
+_MODIFIERS = {
+    "cap": lambda s: s[:1].upper() + s[1:] if s else s,    # 首字母大写
+    "title": lambda s: s.title(),                          # 每个词首字母大写
+    "upper": lambda s: s.upper(),                          # 全大写
+    "lower": lambda s: s.lower(),                          # 全小写
+    "a": lambda s: (("an " if s[:1].lower() in "aeiou" else "a ") + s)
+                  if s else s,                             # 加不定冠词
+    "s": lambda s: s + ("es" if s.endswith(("s", "x", "z", "ch", "sh")) else "s"),
+}
+
+
+class GrammarError(ValueError):
+    """文法非法：符号未定义 / 修饰符未知 / 递归不收敛。"""
+
+
+class GrammarGenerator:
+    """Tracery 风格的文法生成器（自研思路版）。
+
+    文法是一张 ``符号 -> 候选展开`` 的字典；候选可以是字符串或字符串列表
+    （列表里等概率随机选）。展开字符串里用 ``#符号#`` 引用别的符号，
+    可附加修饰符 ``#符号.修饰#``（见 ``_MODIFIERS``）。
+
+    示例::
+
+        g = GrammarGenerator({
+            "origin": ["#adj# #noun#", "#noun# of #place#"],
+            "adj":   ["red", "old", "silent"],
+            "noun":  ["thorn", "river", "mount", "fen"],
+            "place": ["the west", "the north"],
+        }, seed=0)
+        names = g.generate(10)
+
+    与 ``NameGenerator`` 的 Markov 方法并列，作为另一种"从规则而非语料"
+    产出名字的来源。
+    """
+
+    def __init__(self, grammar: dict, *, seed: int = 0, start: str = "origin",
+                 max_depth: int = 24):
+        if start not in grammar:
+            raise ValueError(f"起始符号 {start!r} 不在文法中")
+        self.grammar = {
+            k: (list(v) if isinstance(v, (list, tuple)) else [v])
+            for k, v in grammar.items()
+        }
+        self.rng = np.random.RandomState(seed)
+        self.start = start
+        self.max_depth = max_depth
+
+    def _expand(self, text: str, depth: int) -> str:
+        if depth > self.max_depth:
+            raise GrammarError(
+                f"展开超过最大深度 {self.max_depth}（文法可能含自指循环）")
+
+        def repl(m: "re.Match") -> str:
+            sym = m.group(1)
+            mod = m.group(2)
+            if sym not in self.grammar:
+                raise GrammarError(f"文法未定义符号：{sym}")
+            choice = str(self.rng.choice(self.grammar[sym]))
+            expanded = self._expand(choice, depth + 1)
+            if mod is not None:
+                fn = _MODIFIERS.get(mod)
+                if fn is None:
+                    raise GrammarError(f"未知修饰符：{mod}")
+                expanded = fn(expanded)
+            return expanded
+
+        return _TOKEN.sub(repl, text)
+
+    def _one(self) -> str:
+        return self._expand(f"#{self.start}#", 0).strip()
+
+    def generate(self, n: int = 1) -> list[str]:
+        return [self._one() for _ in range(int(n))]
+
+
+def grammar_names(grammar: dict, n: int = 1, *, seed: int = 0,
+                  start: str = "origin") -> list[str]:
+    """文法命名的一行式入口（等价 ``GrammarGenerator(...).generate(n)``）。"""
+    return GrammarGenerator(grammar, seed=seed, start=start).generate(n)

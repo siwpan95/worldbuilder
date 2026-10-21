@@ -333,6 +333,123 @@ def _assign_names(pois: List[Poi], seed: int) -> None:
         p.name = base if n == 0 else f"{base} {('II', 'III', 'IV', 'V')[min(n - 1, 3)]}"
 
 
+# ---------------------------------------------------------------------------
+# 均匀撒点（Bridson poisson-disk）：作为 place_pois 评分贪心的"补充/替代"
+# 放置策略——保证任意两点间距 >= r，且不依赖任何几何重依赖（纯 numpy）。
+# 算法档：Bridson (2007) "Fast Poisson Disk Sampling in Arbitrary Dimensions"。
+# ---------------------------------------------------------------------------
+def poisson_disk_sample(width: float, height: float, r: float, *, k: int = 30,
+                        seed: int = 0) -> List[Tuple[float, float]]:
+    """Bridson 泊松圆盘采样：在 ``[0,width) × [0,height)`` 内均匀但不规则撒点。
+
+    核心不变式（测试钉死）：**任意两点欧氏距离 >= r**。这是靠"候选点只在
+    半径 ``[r, 2r]`` 的环里生成、且与已有点距离 < r 就拒绝"保证的。
+
+    参数：
+        width/height: 采样区域（单位=格，连续坐标）。
+        r:            最小间距（硬下界）。
+        k:            每个活跃点尝试的候选数（越大越密、越慢）。
+        seed:         随机种子（同 seed 同结果）。
+
+    返回 ``[(x, y), ...]``（浮点坐标）。区域太小时可能只返回起点附近少数点。
+    """
+    if r <= 0:
+        raise ValueError(f"最小间距 r 必须 > 0，收到 {r}")
+    if width <= 0 or height <= 0:
+        raise ValueError(f"采样区域必须为正，收到 {width}x{height}")
+    rng = np.random.RandomState(seed)
+    cell = r / np.sqrt(2.0)                 # 背景栅格：每格至多一个点
+    n_x = max(1, int(np.ceil(width / cell)))
+    n_y = max(1, int(np.ceil(height / cell)))
+    grid = [None] * (n_x * n_y)            # 存"点序号"，None 表示空
+    points: List[Tuple[float, float]] = []
+
+    def fits(x: float, y: float) -> bool:
+        gx = int(x / cell)
+        gy = int(y / cell)
+        for iy in range(max(0, gy - 2), min(n_y, gy + 3)):
+            for ix in range(max(0, gx - 2), min(n_x, gx + 3)):
+                p = grid[iy * n_x + ix]
+                if p is not None:
+                    px, py = points[p]
+                    if (px - x) ** 2 + (py - y) ** 2 < r * r:
+                        return False
+        return True
+
+    def add(x: float, y: float) -> int:
+        idx = len(points)
+        points.append((x, y))
+        grid[int(y / cell) * n_x + int(x / cell)] = idx
+        return idx
+
+    x0 = float(rng.uniform(0, width))
+    y0 = float(rng.uniform(0, height))
+    add(x0, y0)
+    active = [0]
+    while active:
+        i = int(rng.randint(len(active)))
+        cx, cy = points[active[i]]
+        found = False
+        for _ in range(int(k)):
+            ang = rng.uniform(0, 2 * np.pi)
+            rad = r * np.sqrt(rng.uniform(1.0, 4.0))     # 落在 [r, 2r]
+            nx, ny = cx + rad * np.cos(ang), cy + rad * np.sin(ang)
+            if 0 <= nx < width and 0 <= ny < height and fits(nx, ny):
+                add(nx, ny)
+                active.append(len(points) - 1)
+                found = True
+                break
+        if not found:
+            active.pop(i)
+    return points
+
+
+def place_pois_uniform(world: dict, *, r: float, seed: int = 0,
+                      kinds: Optional[Sequence[str]] = None) -> List[Poi]:
+    """用泊松圆盘在陆地上均匀布点（``place_pois`` 评分法的替代放置策略）。
+
+    ``place_pois`` 是按"地形合理度"打分贪心取点；本函数改用纯几何的均匀
+    间距约束——保证任意两 POI 间距 >= r，且都落在主陆块上。种类按
+    ``kinds`` 循环分配（默认镇/村/遗迹），名字沿用 fantasy 命名器去重。
+
+    返回的列表结构与 ``place_pois`` 一致（``Poi`` 列表，坐标 x=列 z=行）。
+    """
+    h = np.asarray(world["height"], dtype=np.float64)
+    water = np.asarray(world["water"], dtype=np.uint8)
+    if h.ndim != 2:
+        raise ValueError(f"height 必须是二维，收到 shape={h.shape}")
+    H, W = h.shape
+    land = water == 0
+    if not land.any():
+        return []
+    main = main_landmass(water)
+    if not main.any():
+        return []
+
+    order = list(kinds) if kinds else [KIND_TOWN, KIND_VILLAGE, KIND_RUIN]
+    pts = poisson_disk_sample(W, H, r, seed=seed)
+    pois: List[Poi] = []
+    seen_cell: set = set()
+    for (x, y) in pts:
+        c, rr = int(round(x)), int(round(y))
+        if not (0 <= rr < H and 0 <= c < W) or not main[rr, c]:
+            continue
+        if (rr, c) in seen_cell:        # 两个点四舍五入落到同一格则去重
+            continue
+        seen_cell.add((rr, c))
+        kind = order[len(pois) % len(order)]
+        pois.append(Poi(
+            id=f"{kind}-{sum(1 for p in pois if p.kind == kind):02d}",
+            kind=kind, x=float(c), z=float(rr),
+            meta={"elevation": float(h[rr, c]),
+                  "biome": int(world.get("biomes", np.zeros_like(land))[rr, c])
+                  if world.get("biomes") is not None else 0},
+        ))
+    _assign_names(pois, seed)
+    pois.sort(key=lambda p: (-len([q for q in pois if q.kind == p.kind]), p.id))
+    return pois
+
+
 def describe(pois: Sequence[Poi], world: Optional[dict] = None) -> str:
     """一行式摘要（CLI / 日志用）。"""
     counts: Dict[str, int] = {}

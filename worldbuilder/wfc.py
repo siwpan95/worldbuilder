@@ -334,6 +334,217 @@ def rasterize(tiles: np.ndarray, tileset: TileSet, *,
     return _largest_component(grid) if keep_largest else grid
 
 
+# ---------------------------------------------------------------------------
+# 重叠模型（overlapping model）：从样本网格学习 N×N 局部图案及邻接约束，
+# 再塌缩生成。源自 mxgmn/WaveFunctionCollapse（MIT，算法档），本实现自研，
+# 零代码复制——只借"学图案 + 约束传播 + 塌缩"这一算法思路。
+# ---------------------------------------------------------------------------
+def _overlap_patterns(sample: np.ndarray, N: int, periodic: bool):
+    """从样本切出所有 N×N 图案并统计出现频次（作为权重）。
+
+    返回 ``(grids, weights)``：``grids`` 是 N×N 整数阵列列表，
+    ``weights`` 是对应的频次（float）。``periodic`` 时按环形环绕取图，
+    否则只在样本内部取（会产生更少的边界图案）。
+    """
+    H, W = sample.shape
+    seen: Dict[Tuple[int, ...], int] = {}
+    grids: List[np.ndarray] = []
+    weights: List[float] = []
+    rows_idx = np.arange(N)
+    if periodic:
+        for y in range(H):
+            for x in range(W):
+                block = sample[np.mod(y + rows_idx, H)][:, np.mod(x + rows_idx, W)]
+                _register(block, seen, grids, weights)
+    else:
+        if H < N or W < N:
+            raise ValueError(f"样本尺寸 {sample.shape} 小于图案尺寸 N={N}")
+        for y in range(H - N + 1):
+            for x in range(W - N + 1):
+                _register(sample[y:y + N, x:x + N], seen, grids, weights)
+    return grids, np.asarray(weights, dtype=np.float64)
+
+
+def _register(block: np.ndarray, seen, grids, weights) -> None:
+    key = tuple(int(v) for v in block.ravel())
+    if key in seen:
+        weights[seen[key]] += 1.0
+    else:
+        seen[key] = len(grids)
+        grids.append(block.copy())
+        weights.append(1.0)
+
+
+def _overlap_adj(grids: List[np.ndarray], N: int) -> List[np.ndarray]:
+    """预编译四个方向的图案邻接矩阵（P×P 布尔）。
+
+    ``adj[d][a, b] == True`` 表示图案 b 可以作为图案 a 在方向 d 上的邻居，
+    判定依据是两图案在相邻 N-1 重叠区上逐元素相等：
+    - d=0 (E)：a[:, 1:] == b[:, :-1]
+    - d=1 (W)：a[:, :-1] == b[:, 1:]
+    - d=2 (S)：a[1:, :] == b[:-1, :]
+    - d=3 (N)：a[:-1, :] == b[1:, :]
+    """
+    P = len(grids)
+    adj = [np.zeros((P, P), dtype=bool) for _ in range(4)]
+    for a in range(P):
+        ga = grids[a]
+        for b in range(P):
+            gb = grids[b]
+            adj[0][a, b] = np.array_equal(ga[:, 1:], gb[:, :-1])
+            adj[1][a, b] = np.array_equal(ga[:, :-1], gb[:, 1:])
+            adj[2][a, b] = np.array_equal(ga[1:, :], gb[:-1, :])
+            adj[3][a, b] = np.array_equal(ga[:-1, :], gb[1:, :])
+    return adj
+
+
+def generate_wfc_overlapping(sample: np.ndarray, N: int, width: int, height: int, *,
+                             seed: int = 0, periodic: bool = True,
+                             periodic_out: bool = False,
+                             max_steps: int = 200_000) -> np.ndarray:
+    """重叠模型 WFC：从 ``sample`` 学 N×N 图案，生成 ``(height, width)`` 网格。
+
+    与 ``generate_wfc``（简单瓦片 + 边匹配）不同，这里**没有显式瓦片集合**——
+    约束完全由样本局部统计隐式给出：任意相邻位置上的两个 N×N 图案，
+    其重叠区必须逐元素相等（等价于"每个 N×N 窗都是样本里出现过的窗"）。
+
+    参数：
+        sample:       二维整数样本（值可以是任意符号，如 0/1 地图）。
+        N:            图案尺寸（>=1）。
+        width/height: 输出网格尺寸。
+        periodic:     从样本切图案时是否环形环绕（影响学到的图案集）。
+        periodic_out: 输出边界是否视作环绕（影响邻居约束）。
+        max_steps:    塌缩步数上限，防止规则矛盾时死循环。
+
+    返回 ``(height, width)`` 的整数网格（符号取自样本的值域）。
+    抛 ``WfcContradiction`` 表示这组样本/尺寸下无解或步数耗尽。
+
+    不变式（测试钉死）：输出中每一个完整落在内部的 N×N 窗，都必定是
+    样本里出现过的某个 N×N 图案——这是重叠模型"局部一致性"的等价表述。
+    """
+    sample = np.asarray(sample, dtype=int)
+    if sample.ndim != 2:
+        raise ValueError(f"sample 必须是二维，收到 ndim={sample.ndim}")
+    if N < 1:
+        raise ValueError(f"N 必须 >= 1，收到 {N}")
+    if width <= 0 or height <= 0:
+        raise ValueError(f"输出尺寸必须为正，收到 {width}x{height}")
+
+    grids, weights = _overlap_patterns(sample, N, periodic)
+    P = len(grids)
+    if P == 0:
+        raise ValueError("样本里提取不到任何 N×N 图案")
+    adj = _overlap_adj(grids, N)
+    rng = np.random.RandomState(seed)
+    n = width * height
+
+    domains: List[np.ndarray] = [np.ones(P, dtype=bool) for _ in range(n)]
+    counts = np.full(n, P, dtype=int)
+    # 方向偏移：0=E 1=W 2=S 3=N，与 adj 的索引对齐
+    _OFF = ((0, 1), (0, -1), (1, 0), (-1, 0))
+
+    def nb_idx(idx: int, d: int) -> Optional[int]:
+        y, x = divmod(idx, width)
+        dy, dx = _OFF[d]
+        ny, nx = y + dy, x + dx
+        if periodic_out:
+            ny %= height
+            nx %= width
+        elif not (0 <= ny < height and 0 <= nx < width):
+            return None
+        return ny * width + nx
+
+    def collapse(idx: int) -> int:
+        dom = domains[idx]
+        cands = np.where(dom)[0]
+        ws = weights[dom]
+        if ws.sum() <= 0.0:
+            return int(rng.choice(cands))
+        return int(rng.choice(cands, p=ws / ws.sum()))
+
+    def propagate(seeds: Sequence[int]) -> bool:
+        stack = list(seeds)
+        while stack:
+            idx = stack.pop()
+            dom = domains[idx]
+            for d in range(4):
+                j = nb_idx(idx, d)
+                if j is None:
+                    continue
+                # 邻居允许集 = 所有候选图案在方向 d 上的合法邻居之并
+                allowed = adj[d][dom].any(axis=0)
+                ndom = domains[j]
+                new = ndom & allowed
+                if not new.any():
+                    return False
+                if not np.array_equal(new, ndom):
+                    trail.append((j, ndom))          # 记下旧域，供回溯还原
+                    domains[j] = new
+                    counts[j] = int(new.sum())
+                    stack.append(j)
+        return True
+
+    steps = 0
+    backtracks = 0
+    max_backtracks = 200_000
+    trail: List[Tuple[int, np.ndarray]] = []
+    decisions: List[Tuple[int, np.ndarray, int, int]] = []   # idx, 原域, mark, chosen
+
+    while True:
+        best, best_c = -1, P + 1
+        for i in range(n):
+            c = counts[i]
+            if c > 1 and c < best_c:
+                best, best_c = i, c
+                if c == 2:
+                    break
+        if best == -1:
+            break
+        original = domains[best].copy()
+        chosen = collapse(best)
+        mark = len(trail)
+        domains[best] = np.zeros(P, dtype=bool)
+        domains[best][chosen] = True
+        counts[best] = 1
+        decisions.append((best, original, mark, chosen))
+        steps += 1
+        if propagate([best]):
+            continue
+        # ---- 回溯：撤到上一个决策点，把它的选择从候选里剔掉再试 ----
+        resolved = False
+        while decisions:
+            bi, bdom, bmark, bchosen = decisions.pop()
+            while len(trail) > bmark:
+                j, old = trail.pop()
+                domains[j] = old
+                counts[j] = int(old.sum())
+            backtracks += 1
+            if backtracks > max_backtracks:
+                raise WfcContradiction("overlapping 回溯次数超过上限")
+            reduced = bdom.copy()
+            reduced[bchosen] = False
+            if not reduced.any():
+                continue                                # 该格已无候选，继续往上层撤
+            pick2 = int(np.where(reduced)[0][rng.randint(int(reduced.sum()))])
+            mark2 = len(trail)
+            domains[bi] = np.zeros(P, dtype=bool)
+            domains[bi][pick2] = True
+            counts[bi] = 1
+            decisions.append((bi, reduced, mark2, pick2))
+            if propagate([bi]):
+                resolved = True
+                break
+        if not resolved:
+            raise WfcContradiction("overlapping 规则矛盾且回溯耗尽")
+
+    out = np.zeros((height, width), dtype=int)
+    for idx in range(n):
+        y, x = divmod(idx, width)
+        p = int(np.where(domains[idx])[0][0])
+        out[y, x] = int(grids[p][0, 0])
+    return out
+
+
 def generate_dungeon_wfc(width: int = 32, height: int = 24, *, seed: int = 0,
                          tileset: Optional[TileSet] = None,
                          keep_largest: bool = True) -> dict:
