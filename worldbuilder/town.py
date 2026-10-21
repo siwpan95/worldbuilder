@@ -168,7 +168,11 @@ def scalar(x1, y1, x2, y2):
 
 
 def distance2line(x1, y1, dx1, dy1, x0, y0):
-    return (dx1 * y0 - dy1 * x0 + (y1 + dy1) * x1 - (x1 + dx1) * y1) / math.hypot(dx1, dy1)
+    norm = math.hypot(dx1, dy1)
+    if norm == 0.0:
+        raise ValueError(
+            f"方向向量不能为零向量 (dx1, dy1)=({dx1!r}, {dy1!r})")
+    return (dx1 * y0 - dy1 * x0 + (y1 + dy1) * x1 - (x1 + dx1) * y1) / norm
 
 
 def interpolate(p1, p2, ratio=0.5):
@@ -587,6 +591,9 @@ class Voronoi:
 
     @staticmethod
     def build(vertices):
+        vertices = list(vertices)
+        if not vertices:
+            raise ValueError("vertices 不能为空（Voronoi 需要至少 1 个种子点）")
         minx = min(v.x for v in vertices)
         miny = min(v.y for v in vertices)
         maxx = max(v.x for v in vertices)
@@ -791,7 +798,7 @@ def _collect_edge(wards, edges, w, a, b):
         edges.append((a, b))
 
 
-def build_walls(model):
+def _build_walls(model):
     inner = model["inner"]
     if not inner:
         return None
@@ -836,7 +843,7 @@ def _remove_neighbors(lst, idx):
 
 
 # ---- 路网（Topology 图寻路）----
-def build_streets(model):
+def _build_streets(model):
     patches = model["patches"]
     wall = model["wall"]
     border = wall["shape"] if wall else None
@@ -993,8 +1000,12 @@ def _ward_buildings(model, patch, wtype):
 def generate_town(seed: int = 1, n_wards: int = 15, walled=None, scale_to: int = 900):
     """生成一座中世纪奇幻城镇。
 
-    返回 dict：bounds / center / wall / citadel / plaza / streets / wards / patches。
+    返回 dict：bounds / center / wall / citadel / plaza / streets / wards / scale_to。
     坐标为抽象单位，渲染时由调用方按需缩放。
+
+    注：城墙 / 路网的中间构建步骤是内部函数 ``_build_walls`` / ``_build_streets``，
+    它们消费的是内部 model（含 inner / patches / gates 等中间键），并非本函数
+    返回的公开 dict；请直接使用 ``generate_town`` 的返回值。
     """
     _rng.reset(seed)
     plaza_needed = _rng.bool()
@@ -1037,7 +1048,7 @@ def generate_town(seed: int = 1, n_wards: int = 15, walled=None, scale_to: int =
 
     # 2) 城墙
     if walls_needed:
-        wall = build_walls(model)
+        wall = _build_walls(model)
         if wall:
             model["wall"] = wall
             model["gates"] = wall["gates"]
@@ -1047,7 +1058,7 @@ def generate_town(seed: int = 1, n_wards: int = 15, walled=None, scale_to: int =
                                 if p.shape.distance(model["center"]) < radius * 3]
 
     # 3) 路网
-    model["streets"] = build_streets(model)
+    model["streets"] = _build_streets(model)
 
     # 4) ward 分配
     unassigned = [p for p in model["inner"]]

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "worldbuilder"
-version = "1.0.0"
+version = "1.0.1"
 description = "程序化生成工具包：噪声/地牢/洞穴/地形生物群系/城镇/命名/掉落（纯 Python + numpy）"
 readme = "README.md"
 requires-python = ">=3.9"

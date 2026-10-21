@@ -5,6 +5,8 @@ seed 控制可复现性。
 """
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 
 
@@ -48,9 +50,20 @@ def value_noise(x, y, seed: int = 0) -> np.ndarray:
 
 
 def perlin_noise(x, y, seed: int = 0) -> np.ndarray:
-    """Perlin 梯度噪声（基于格点角度梯度），返回 0..1。"""
+    """Perlin 梯度噪声（基于格点角度梯度），返回 0..1。
+
+    注意：若输入坐标全部落在**整数格点**上（小数部分 xf=yf=0，四角点积全为 0），
+    输出将恒为 0.5（高程场被抹平）——这是数学必然，非 bug。生成地形请按波长
+    缩放坐标（如 ``x * freq``，``freq = 1/波长``）以避开整点；检测到整点网格时
+    会发出 ``UserWarning``。
+    """
     x = np.asarray(x, dtype=np.float64)
     y = np.asarray(y, dtype=np.float64)
+    if np.all(x == np.floor(x)) and np.all(y == np.floor(y)):
+        warnings.warn(
+            "perlin/fbm 输入全部落在整数格点上，输出恒为 0.5（地形细节被抹平）；"
+            "请按波长缩放坐标（如 x*freq，freq=1/波长）避开整点。",
+            UserWarning, stacklevel=2)
     xi = np.floor(x).astype(np.int64)
     yi = np.floor(y).astype(np.int64)
     xf = x - xi
@@ -77,6 +90,8 @@ def perlin_noise(x, y, seed: int = 0) -> np.ndarray:
 def fbm(x, y, octaves: int = 4, lacunarity: float = 2.0, gain: float = 0.5,
         seed: int = 0) -> np.ndarray:
     """分形布朗运动（fBm）：多层 perlin 叠加，返回 0..1。
+
+    注意：整数格点输入会使输出恒为 0.5（详见 perlin_noise）；请按波长缩放坐标避开整点。
 
     参数：
         octaves:    叠加层数（默认 4）

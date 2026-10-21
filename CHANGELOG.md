@@ -4,6 +4,23 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.1] - 2026-10-21
+
+> 专项压测暴露的 4 处缺陷修复。
+
+### Fixed
+
+- **noise.perlin_noise / fbm**：输入全部落在整数格点时输出恒为 0.5（高程场被静默抹平）。
+  补充文档说明，并在检测到整点网格时发出 `UserWarning`，提示按波长缩放坐标（`x*freq`）避开整点。
+- **town.distance2line**：方向向量为零时由裸 `ZeroDivisionError` 改为
+  `ValueError: 方向向量不能为零向量 (dx1, dy1)`。
+- **town.Voronoi.build**：空顶点集由泄漏实现细节的 `min() ... is empty` 改为
+  `ValueError: vertices 不能为空（Voronoi 需要至少 1 个种子点）`。
+- **town._build_walls / _build_streets**：原公开名 `build_walls` / `build_streets` 消费的是
+  `generate_town` 的内部 model（含 `inner` / `patches` / `gates`），与公开返回 dict 的键不一致，
+  外部调用必 `KeyError`。已改名为内部函数（`_` 前缀），并修正 `generate_town` 文档字符串
+  （实际返回 `scale_to` 而非文档所写的 `patches`）。
+
 ## [1.0.0] - 2026-10-20（重建同名发行版）
 
 > 说明：原 `v1.0.0`（2026-08-27，包名 `procgen`）已连同 Gitee release 一并删除重建，
