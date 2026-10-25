@@ -21,6 +21,11 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import numpy as np
 
+# 注意：桥接函数与底层函数**同名**时必须取别名导入，否则函数体会调到自己（无限递归）。
+from .dungeon import generate_dungeon as _generate_dungeon
+from .dungeon import generate_dungeon_bsp as _generate_dungeon_bsp
+from .dungeongraph import build_dungeon_graph, detect_rooms as _detect_rooms
+from .namegen import grammar_names as _grammar_names
 from .worldgen import generate_world_complete, generate_world_full
 from .worldspec import load_world, read_meta, save_world, validate
 
@@ -29,6 +34,11 @@ __all__ = [
     "SUPPORTED_CONTRACTS",
     "generate",
     "generate_complete",
+    "generate_dungeon",
+    "generate_dungeon_bsp",
+    "dungeon_graph",
+    "detect_rooms",
+    "grammar_names",
     "save",
     "load",
     "validate_spec",
@@ -39,12 +49,13 @@ __all__ = [
 ]
 
 #: 本 bridge 接口自身的版本（与契约版本是两套号，别混）
-BRIDGE_VERSION = "1.0.0"
+BRIDGE_VERSION = "1.1.0"
 
 #: 本仓声明能满足的契约及兼容区间 —— 由组合仓在装配期校验
 SUPPORTED_CONTRACTS = {
     "worldspec_source": ">=1.0,<2.0",
     "terrain_source": ">=1.0,<2.0",
+    "dungeon_source": ">=1.0,<2.0",
 }
 
 REQUIRED_LAYERS = ("height", "biome", "water")
@@ -94,6 +105,43 @@ def tile_m_of(spec_dir) -> float:
     except Exception:                                       # noqa: BLE001
         return 1.0
     return float(m.get("tile_m", 1.0))
+
+
+# -------------------------------------------------------------- 地牢 ----
+def generate_dungeon(width: int = 48, height: int = 32, rooms: int = 8,
+                     seed: int = 0) -> dict:
+    """生成房间型地牢（转发 `dungeon.generate_dungeon`）。
+
+    返回 ``{'grid': (h,w) int8（0=墙 1=地）, 'rooms': [{'x','y','w','h','cx','cy'}],
+    'connections': [(i, j), ...]}``。
+    """
+    return _generate_dungeon(width=width, height=height, rooms=rooms, seed=seed)
+
+
+def generate_dungeon_bsp(width: int = 48, height: int = 32, seed: int = 0, **kw) -> dict:
+    """BSP 分型地牢（房间更规整，转发 `dungeon.generate_dungeon_bsp`）。"""
+    return _generate_dungeon_bsp(width=width, height=height, seed=seed, **kw)
+
+
+def dungeon_graph(grid, *, locks: int = 1, loops: int = 2, seed: int = 0,
+                  rooms=None) -> dict:
+    """把地牢网格抽成**可解的关卡图**（转发 `dungeongraph.build_dungeon_graph`）。
+
+    返回 ``{'nodes', 'edges', 'keys', 'entrance', 'boss', 'stats'}``，
+    与 worldspec 的 ``graph.json`` 同形 —— 所以下游 an-engine 的
+    ``MapGraph`` 能直接吃它（**生成 → 玩法**是同一套契约形状）。
+    """
+    return build_dungeon_graph(grid, rooms=rooms, locks=locks, loops=loops, seed=seed)
+
+
+def detect_rooms(grid, **kw) -> list:
+    """从网格识别房间（转发 `dungeongraph.detect_rooms`）。"""
+    return _detect_rooms(grid, **kw)
+
+
+def grammar_names(grammar: dict, n: int = 1, *, seed: int = 0, **kw) -> list:
+    """文法命名（转发 `namegen.grammar_names`）—— 怪物 / 宝物 / 地名的人名生成。"""
+    return _grammar_names(grammar, n, seed=seed, **kw)
 
 
 # -------------------------------------------------------------- 高程 ----
