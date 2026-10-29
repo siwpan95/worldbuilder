@@ -6,3 +6,6 @@ release/
 dist/
 build/
 *.egg-info/
+
+# 编辑器/工作区元数据（2026-10-29 补）
+.workbuddy/
