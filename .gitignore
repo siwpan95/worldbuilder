@@ -9,3 +9,6 @@ build/
 
 # 编辑器/工作区元数据（2026-10-29 补）
 .workbuddy/
+
+# 卫生债务批次 2026-11-01
+example/output/
