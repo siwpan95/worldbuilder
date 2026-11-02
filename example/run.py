@@ -169,7 +169,14 @@ def write_report(seed, world, dungeons, cave, names, loot, town):
     lines.append("# 冒险者公会任务包（worldbuilder 实操成果）")
     lines.append("")
     lines.append(f"- 种子 seed = {seed}")
-    lines.append("- 生成时间由运行环境决定；输出目录：<PATH>\example\output")
+    lines.append("- 生成时间由运行环境决定；输出目录：本示例目录下的 `output/`"
+                 "（由 `python run.py --seed {}` 生成）".format(seed))
+    lines.append("")
+    lines.append("> ⚠ **图片不入库**：`output/` 是运行产物目录（已 gitignore），"
+                 "本文件中的图片需在本地生成后查看。")
+    lines.append("> 复现步骤：进入本目录执行 `python run.py --seed {}`"
+                 "（依赖 numpy + Pillow），产物落在 `output/`。".format(seed))
+    lines.append("> 下文各图的文件名即 `output/` 下的对应文件，可按名对照查看。")
     lines.append("")
     lines.append("## 1. 世界与生物群系 (generate_world)")
     lines.append("")
@@ -178,11 +185,11 @@ def write_report(seed, world, dungeons, cave, names, loot, town):
     for k, v in world["dist"].items():
         lines.append(f"| {k} | {v} |")
     lines.append("")
-    lines.append("![生物群系](output/world_biomes.png)  ![高度图](output/world_heightmap.png)")
+    lines.append("- 图：`output/world_biomes.png`（生物群系）　`output/world_heightmap.png`（高度图）")
     lines.append("")
     lines.append("岛屿版（falloff=0.35，演示径向衰减成岛）：")
     lines.append("")
-    lines.append("![岛屿版](output/world_island.png)")
+    lines.append("- 图：`output/world_island.png`")
     lines.append("")
     lines.append("## 2. 地牢 (generate_dungeon / generate_dungeon_bsp)")
     lines.append("")
@@ -191,18 +198,18 @@ def write_report(seed, world, dungeons, cave, names, loot, town):
     lines.append(f"- BSP 式：{dungeons['rooms_bsp']} 房间 / "
                  f"{dungeons['connections_bsp']} 连接")
     lines.append("")
-    lines.append("![房间地牢](output/dungeon_rooms.png)  ![BSP地牢](output/dungeon_bsp.png)")
+    lines.append("- 图：`output/dungeon_rooms.png`（房间地牢）　`output/dungeon_bsp.png`（BSP 地牢）")
     lines.append("")
     lines.append("## 3. 洞穴 (generate_cave, 元胞自动机)")
     lines.append("")
     lines.append(f"- 连通块数：{cave['regions']}，最大可走地板格数：{cave['floor_count']}")
     lines.append("")
-    lines.append("![洞穴](output/cave.png)")
+    lines.append("- 图：`output/cave.png`")
     lines.append("")
     lines.append("## 4. 噪声对比 (value / perlin / fbm / simplex)")
     lines.append("")
-    lines.append("![value](output/noise_value.png) ![perlin](output/noise_perlin.png)")
-    lines.append("![fbm](output/noise_fbm.png) ![simplex](output/noise_simplex.png)")
+    lines.append("- 图：`output/noise_value.png`　`output/noise_perlin.png`　"
+                 "`output/noise_fbm.png`　`output/noise_simplex.png`")
     lines.append("")
     lines.append("## 5. 名字生成 (NameGenerator, 音节 / 马尔可夫)")
     lines.append("")
@@ -226,7 +233,7 @@ def write_report(seed, world, dungeons, cave, names, loot, town):
     for k, v in sorted(town["dist"].items(), key=lambda kv: -kv[1]):
         lines.append(f"| {k} | {v} |")
     lines.append("")
-    lines.append("![城镇](output/town.png)")
+    lines.append("- 图：`output/town.png`")
     lines.append("")
     lines.append("> 说明：`generate_town` 从零移植自 watabou 的 Medieval Fantasy City "
                  "Generator（Haxe/OpenFL），复刻其 Voronoi 划区 + Lloyd 松弛、城墙"

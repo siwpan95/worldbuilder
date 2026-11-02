@@ -1,7 +1,11 @@
 # 冒险者公会任务包（worldbuilder 实操成果）
 
 - 种子 seed = 7
-- 生成时间由运行环境决定；输出目录：<PATH>\example\output
+- 生成时间由运行环境决定；输出目录：本示例目录下的 `output/`（由 `python run.py --seed 7` 生成）
+
+> ⚠ **图片不入库**：`output/` 是运行产物目录（已 gitignore），本文件中的图片需在本地生成后查看。
+> 复现步骤：进入本目录执行 `python run.py --seed 7`（依赖 numpy + Pillow），产物落在 `output/`。
+> 下文各图的文件名即 `output/` 下的对应文件，可按名对照查看。
 
 ## 1. 世界与生物群系 (generate_world)
 
@@ -16,29 +20,28 @@
 | 山 | 1390 |
 | 雪 | 122 |
 
-![生物群系](output/world_biomes.png)  ![高度图](output/world_heightmap.png)
+- 图：`output/world_biomes.png`（生物群系）　`output/world_heightmap.png`（高度图）
 
 岛屿版（falloff=0.35，演示径向衰减成岛）：
 
-![岛屿版](output/world_island.png)
+- 图：`output/world_island.png`
 
 ## 2. 地牢 (generate_dungeon / generate_dungeon_bsp)
 
 - 随机房间式：9 房间 / 8 连接
 - BSP 式：8 房间 / 7 连接
 
-![房间地牢](output/dungeon_rooms.png)  ![BSP地牢](output/dungeon_bsp.png)
+- 图：`output/dungeon_rooms.png`（房间地牢）　`output/dungeon_bsp.png`（BSP 地牢）
 
 ## 3. 洞穴 (generate_cave, 元胞自动机)
 
 - 连通块数：2，最大可走地板格数：1140
 
-![洞穴](output/cave.png)
+- 图：`output/cave.png`
 
 ## 4. 噪声对比 (value / perlin / fbm / simplex)
 
-![value](output/noise_value.png) ![perlin](output/noise_perlin.png)
-![fbm](output/noise_fbm.png) ![simplex](output/noise_simplex.png)
+- 图：`output/noise_value.png`　`output/noise_perlin.png`　`output/noise_fbm.png`　`output/noise_simplex.png`
 
 ## 5. 名字生成 (NameGenerator, 音节 / 马尔可夫)
 
@@ -70,7 +73,7 @@
 | Cathedral | 1 |
 | Merchant | 1 |
 
-![城镇](output/town.png)
+- 图：`output/town.png`
 
 > 说明：`generate_town` 从零移植自 watabou 的 Medieval Fantasy City Generator（Haxe/OpenFL），复刻其 Voronoi 划区 + Lloyd 松弛、城墙（塔楼/城门）、图寻路路网、ward 加权分配与建筑递归分割等核心算法，以纯 Python + numpy 实现，无外部图形依赖。
 

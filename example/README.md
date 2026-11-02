@@ -17,7 +17,8 @@ python run.py --seed 7   REM 换种子生成另一套世界
 
 ## 产出
 
-`output/`（本示例目录）下：
+`output/`（本示例目录）下 —— ⚠ 该目录是**运行产物**，已 gitignore 不入库；
+运行 `python run.py`（或 `--seed 7`）后才会生成下列文件，`report.md` 里的图片亦需本地生成后查看：
 
 | 文件 | 内容 | 对应 worldbuilder API |
 | --- | --- | --- |
